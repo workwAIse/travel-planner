@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Itinerary Enricher
 
-## Getting Started
+Paste raw travel itinerary text and get structured, enriched data: dates, day episodes (Morning/Afternoon/Evening), summaries, per-place details, Google Maps links (from your paste), coordinates (lat/lng), and one image per place. Data is saved to Supabase for later use in a travel trip UI (e.g. map and walking route).
 
-First, run the development server:
+## Stack
+
+- **Next.js** (App Router), **Vercel**, **Supabase** (DB), **shadcn/ui**, **Tailwind**
+- **OpenAI** for parsing raw text into structured JSON
+- **OpenStreetMap Nominatim** for geocoding (free, no API key)
+- **Wikipedia API** for place images (free, no API key)
+
+## Environment variables
+
+Copy `.env.local.example` to `.env.local` and set:
+
+| Variable | Description |
+|--------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase key (either works with current RLS) |
+| `OPENAI_API_KEY` | OpenAI API key for itinerary parsing |
+
+Geocoding and place images use **Nominatim** (OpenStreetMap) and **Wikipedia**; no API keys are required. Nominatim allows 1 request per second, so enrichment may take a bit longer for many places.
+
+## Database setup
+
+Run the Supabase migration so the app has `trips`, `days`, and `places` tables:
+
+1. Create a project at [supabase.com](https://supabase.com).
+2. In the SQL Editor, run the contents of `supabase/migrations/20260222000000_create_trips_days_places.sql`.
+
+Or use the Supabase CLI from the project root:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+supabase link
+supabase db push
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Run locally
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open [http://localhost:3000](http://localhost:3000). Paste an itinerary, enter a trip name, and click **Enrich and save**.
 
-## Learn More
+## Troubleshooting
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **"TypeError: fetch failed" or "ENOTFOUND"** – Usually means `NEXT_PUBLIC_SUPABASE_URL` is wrong or still the placeholder. Set it to your real project URL from [Supabase Dashboard](https://supabase.com/dashboard) → your project → Settings → API (e.g. `https://abcdefghij.supabase.co`). Restart the dev server after changing `.env.local`.
+- **Check all connections** – Open [http://localhost:3000/api/debug-connections](http://localhost:3000/api/debug-connections) to see whether OpenAI, Nominatim, and Supabase respond. Fix any that report `ok: false`.
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Push the repo to GitHub and import the project in [Vercel](https://vercel.com).
+2. Add the same environment variables in the Vercel project (Settings → Environment Variables).
+3. Deploy. The app uses serverless functions and needs no extra config.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Routes
+
+- **`/`** – Paste raw itinerary, trip name, and **Enrich and save** (parse → geocode + photos → save).
+- **`/trips`** – List saved trips.
+- **`/trips/[id]`** – Trip detail: days, episodes, places with image, link, and coordinates (ready for a future map view).
+
+## UX
+
+- **[UX Plan: Airbnb-like look & feel](docs/UX-PLAN-AIRBNB-LIKE.md)** – Senior UX audit and concrete recommendations for visual identity, home/trips/detail pages, navigation, and copy.
