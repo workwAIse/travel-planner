@@ -1,27 +1,22 @@
-import Link from "next/link";
 import { EnrichForm } from "@/components/enrich-form";
-import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b px-4 py-3 flex items-center justify-between gap-4">
-        <h1 className="text-lg font-semibold">Itinerary Enricher</h1>
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/trips">My trips</Link>
-        </Button>
-      </header>
-      <main className="flex-1 container max-w-3xl mx-auto px-4 py-8">
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight">New itinerary</h2>
-            <p className="text-muted-foreground mt-1">
-              Paste your raw itinerary text below. We’ll parse it, add coordinates and photos, then save it to your trips.
-            </p>
-          </div>
-          <EnrichForm />
+    <main className="flex-1">
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-accent/10 py-16 sm:py-24">
+        <div className="mx-auto max-w-3xl px-4 text-center">
+          <h1 className="font-display text-4xl sm:text-5xl tracking-tight">
+            Turn your notes into a trip you can see
+          </h1>
+          <p className="mt-4 text-lg text-muted-foreground max-w-xl mx-auto">
+            Paste your itinerary and we add places, photos, maps, and weather — so you can explore your trip at a glance.
+          </p>
         </div>
-      </main>
-    </div>
+      </section>
+
+      <section className="mx-auto max-w-3xl px-4 -mt-8 relative z-10 pb-16">
+        <EnrichForm />
+      </section>
+    </main>
   );
 }

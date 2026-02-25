@@ -11,9 +11,31 @@ export async function saveTrip(
 ): Promise<{ tripId?: string; error?: string }> {
   try {
     const supabase = getSupabase();
+
+    const dates = enriched.days.map((d) => d.date).sort();
+    const startDate = dates[0] ?? null;
+    const endDate = dates[dates.length - 1] ?? null;
+
+    let coverImageUrl: string | null = null;
+    for (const day of enriched.days) {
+      for (const place of day.places) {
+        if (place.imageUrl) {
+          coverImageUrl = place.imageUrl;
+          break;
+        }
+      }
+      if (coverImageUrl) break;
+    }
+
     const { data: trip, error: tripError } = await supabase
       .from("trips")
-      .insert({ name, raw_input: rawInput })
+      .insert({
+        name,
+        raw_input: rawInput,
+        start_date: startDate,
+        end_date: endDate,
+        cover_image_url: coverImageUrl,
+      })
       .select("id")
       .single();
 
@@ -22,7 +44,7 @@ export async function saveTrip(
       if (tripError?.code === "PGRST301" || msg.toLowerCase().includes("invalid api key") || msg.includes("401")) {
         return {
           error:
-            "Invalid Supabase API key. In .env.local set SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY from Dashboard → Project Settings → API.",
+            "Invalid Supabase API key. In .env.local set SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY (see docs/SUPABASE-SETUP.md).",
         };
       }
       return { error: msg };
@@ -48,6 +70,10 @@ export async function saveTrip(
           theme: day.theme ?? null,
           summary: day.summary ?? "",
           episode_order: episodeOrder,
+          weather_high_c: day.weatherHighC ?? null,
+          weather_low_c: day.weatherLowC ?? null,
+          weather_condition: day.weatherCondition ?? null,
+          weather_icon: day.weatherIcon ?? null,
         })
         .select("id")
         .single();
@@ -70,6 +96,10 @@ export async function saveTrip(
           lng: p.lng,
           image_url: p.imageUrl ?? null,
           sort_order: p.sortOrder,
+          description_long: p.descriptionLong ?? null,
+          category: p.category ?? null,
+          duration_minutes: p.durationMinutes ?? null,
+          address_short: p.addressShort ?? null,
         });
 
         if (placeError) {

@@ -2,6 +2,8 @@
 
 import { formatFetchError } from "./errors";
 import type { ParsedItinerary, EnrichedItinerary, EnrichedPlace, EpisodeKey } from "./schema";
+import { fetchWeather } from "./weather";
+import { generatePlaceDetails } from "./place-details";
 
 const EPISODE_ORDER: EpisodeKey[] = ["Morning", "Afternoon", "Evening"];
 
@@ -36,10 +38,64 @@ export async function enrichItinerary(parsed: ParsedItinerary): Promise<{
             imageUrl,
             episode,
             sortOrder: sortOrder++,
+            descriptionLong: null,
+            category: null,
+            durationMinutes: null,
+            addressShort: null,
           });
         }
       }
-      days.push({ ...day, places });
+
+      try {
+        const detailInputs = places.map((p) => ({
+          name: p.name,
+          city: day.place,
+          description: p.description ?? undefined,
+        }));
+        const details = await generatePlaceDetails(detailInputs);
+        for (let i = 0; i < places.length; i++) {
+          if (details[i]) {
+            places[i] = {
+              ...places[i],
+              descriptionLong: details[i].descriptionLong,
+              category: details[i].category,
+              durationMinutes: details[i].durationMinutes,
+              addressShort: details[i].addressShort,
+            };
+          }
+        }
+      } catch {
+        // Non-fatal: place details are optional enrichment
+      }
+
+      let weatherHighC: number | null = null;
+      let weatherLowC: number | null = null;
+      let weatherCondition: string | null = null;
+      let weatherIcon: string | null = null;
+
+      const firstGeocodedPlace = places.find((p) => p.lat !== null && p.lng !== null);
+      if (firstGeocodedPlace?.lat && firstGeocodedPlace?.lng) {
+        try {
+          const weather = await fetchWeather(firstGeocodedPlace.lat, firstGeocodedPlace.lng, day.date);
+          if (weather) {
+            weatherHighC = weather.highC;
+            weatherLowC = weather.lowC;
+            weatherCondition = weather.condition;
+            weatherIcon = weather.icon;
+          }
+        } catch {
+          // Non-fatal: weather is optional
+        }
+      }
+
+      days.push({
+        ...day,
+        places,
+        weatherHighC,
+        weatherLowC,
+        weatherCondition,
+        weatherIcon,
+      });
     }
 
     return { data: { days } };
@@ -108,4 +164,3 @@ async function getPlaceImageWikipedia(
     return null;
   }
 }
-

@@ -4,6 +4,9 @@ export type Trip = {
   raw_input: string | null;
   created_at: string;
   user_id: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  cover_image_url: string | null;
 };
 
 export type Day = {
@@ -15,6 +18,10 @@ export type Day = {
   summary: string | null;
   episode_order: string[];
   created_at: string;
+  weather_high_c: number | null;
+  weather_low_c: number | null;
+  weather_condition: string | null;
+  weather_icon: string | null;
 };
 
 export type Place = {
@@ -29,6 +36,10 @@ export type Place = {
   image_url: string | null;
   sort_order: number;
   created_at: string;
+  description_long: string | null;
+  category: string | null;
+  duration_minutes: number | null;
+  address_short: string | null;
 };
 
 export type TripWithDaysAndPlaces = Trip & {

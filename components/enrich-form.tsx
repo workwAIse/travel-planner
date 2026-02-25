@@ -3,7 +3,7 @@
 import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2Icon, XIcon } from "lucide-react";
+import { Loader2Icon, XIcon, SparklesIcon } from "lucide-react";
 import { enrichAndSaveTrip } from "@/app/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ export function EnrichForm() {
     try {
       const result = await enrichAndSaveTrip(rawText, tripName);
       if (result.ok) {
-        toast.success("Trip saved.");
+        toast.success("Trip saved — let's explore!");
         router.push(`/trips/${result.tripId}`);
         return;
       }
@@ -40,20 +40,25 @@ export function EnrichForm() {
 
   return (
     <form id={formId} onSubmit={handleSubmit} noValidate aria-describedby={error ? errorId : undefined}>
-      <Card>
-        <CardHeader className="space-y-2">
-          <Label htmlFor="trip-name">Trip name</Label>
-          <Input
-            id="trip-name"
-            placeholder="e.g. Vietnam March 2026"
-            value={tripName}
-            onChange={(e) => {
-              setTripName(e.target.value);
-              setError(null);
-            }}
-            disabled={loading}
-            aria-invalid={!!error}
-          />
+      <Card className="shadow-md border-0">
+        <CardHeader className="space-y-3 pb-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="trip-name" className="text-sm font-medium">
+              Where to?
+            </Label>
+            <Input
+              id="trip-name"
+              placeholder="e.g. Vietnam March 2026"
+              value={tripName}
+              onChange={(e) => {
+                setTripName(e.target.value);
+                setError(null);
+              }}
+              disabled={loading}
+              aria-invalid={!!error}
+              className="text-base"
+            />
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
@@ -74,11 +79,13 @@ export function EnrichForm() {
               </Button>
             </Alert>
           )}
-          <div className="space-y-2">
-            <Label htmlFor="itinerary">Raw itinerary text</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="itinerary" className="text-sm font-medium">
+              Your itinerary
+            </Label>
             <Textarea
               id="itinerary"
-              placeholder="Paste your itinerary here (dates, places, Google Maps links, etc.)..."
+              placeholder="Paste your plan — dates, places, links — we'll add the rest..."
               value={rawText}
               onChange={(e) => {
                 setRawText(e.target.value);
@@ -90,14 +97,17 @@ export function EnrichForm() {
               aria-invalid={!!error}
             />
           </div>
-          <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+          <Button type="submit" disabled={loading} className="w-full sm:w-auto" size="lg">
             {loading ? (
               <>
                 <Loader2Icon className="size-4 animate-spin" aria-hidden />
-                Parsing & enriching…
+                Adding places & photos…
               </>
             ) : (
-              "Enrich and save"
+              <>
+                <SparklesIcon className="size-4" aria-hidden />
+                Create trip
+              </>
             )}
           </Button>
         </CardContent>

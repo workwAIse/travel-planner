@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, DM_Serif_Display } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { Header } from "@/components/layout/header";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,9 +14,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const dmSerif = DM_Serif_Display({
+  variable: "--font-dm-serif",
+  weight: "400",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
-  title: "Itinerary Enricher | Travel Planner",
-  description: "Paste raw itinerary text and get enriched days, places, coordinates, and photos.",
+  title: "Travel Planner",
+  description: "Turn your notes into a trip you can see — with places, photos, maps, and weather.",
 };
 
 export default function RootLayout({
@@ -26,20 +33,21 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
+        className={`${geistSans.variable} ${geistMono.variable} ${dmSerif.variable} antialiased flex flex-col min-h-screen`}
       >
+        <Header />
         <div className="flex-1">{children}</div>
-        <footer className="text-center text-xs text-muted-foreground py-2 border-t">
+        <footer className="text-center text-xs text-muted-foreground py-3 border-t">
           Geocoding ©{" "}
           <a
             href="https://www.openstreetmap.org/copyright"
             target="_blank"
             rel="noopener noreferrer"
-            className="underline"
+            className="underline hover:text-foreground transition-colors"
           >
             OpenStreetMap
           </a>{" "}
-          contributors. Place images from Wikipedia.
+          contributors · Place images from Wikipedia
         </footer>
         <Toaster />
       </body>

@@ -1,12 +1,29 @@
-# Itinerary Enricher
+# Travel Planner
 
-Paste raw travel itinerary text and get structured, enriched data: dates, day episodes (Morning/Afternoon/Evening), summaries, per-place details, Google Maps links (from your paste), coordinates (lat/lng), and one image per place. Data is saved to Supabase for later use in a travel trip UI (e.g. map and walking route).
+An interactive, Airbnb-grade travel planner that turns raw itinerary text into a rich, explorable trip experience with maps, weather, drag-and-drop reordering, calendar view, and timeline view.
+
+## Features
+
+- **Smart parsing** -- Paste raw itinerary text and AI extracts structured days, places, and episodes
+- **Auto-enrichment** -- Geocoding, Wikipedia images, weather forecasts, AI-generated place descriptions
+- **Daily view** -- Day-by-day itinerary with place cards, episode sections, and interactive Leaflet map
+- **Calendar view** -- Month-grid overview with city color coding, weather icons, and stop counts
+- **Timeline view** -- Scroll-animated vertical timeline with city transitions and place previews
+- **Drag-and-drop** -- Reorder stops within a day, persisted to the database
+- **Trip intelligence** -- Extend trips by adding days, AI recommendations for alternatives
+- **Responsive** -- Mobile-first design with warm Airbnb-inspired palette
 
 ## Stack
 
-- **Next.js** (App Router), **Vercel**, **Supabase** (DB), **shadcn/ui**, **Tailwind**
-- **OpenAI** for parsing raw text into structured JSON
-- **OpenStreetMap Nominatim** for geocoding (free, no API key)
+- **Next.js 16** (App Router), **React 19**, **TypeScript**
+- **Tailwind CSS 4** + **shadcn/ui** (warm palette, 1rem radius, soft shadows)
+- **Supabase** (PostgreSQL) for persistence
+- **OpenAI** (GPT-4o-mini) for parsing, place descriptions, and recommendations
+- **Leaflet** / **react-leaflet** for interactive maps (OpenStreetMap tiles)
+- **@dnd-kit** for drag-and-drop reordering
+- **framer-motion** for animations
+- **Open-Meteo** for weather data (free, no API key)
+- **Nominatim** for geocoding (free, no API key)
 - **Wikipedia API** for place images (free, no API key)
 
 ## Environment variables
@@ -15,20 +32,20 @@ Copy `.env.local.example` to `.env.local` and set:
 
 | Variable | Description |
 |--------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase key (either works with current RLS) |
-| `OPENAI_API_KEY` | OpenAI API key for itinerary parsing |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (Dashboard → Project Settings → General) |
+| Supabase key (one of) | `SUPABASE_SECRET_KEY` (new), `SUPABASE_SERVICE_ROLE_KEY` (legacy), or the publishable/anon key for frontend-only use |
+| `OPENAI_API_KEY` | OpenAI API key for parsing and enrichment |
 
-Geocoding and place images use **Nominatim** (OpenStreetMap) and **Wikipedia**; no API keys are required. Nominatim allows 1 request per second, so enrichment may take a bit longer for many places.
+**Where to find Supabase URL and keys:** See **[docs/SUPABASE-SETUP.md](docs/SUPABASE-SETUP.md)** for step-by-step Dashboard navigation and the [new vs legacy API key system](https://github.com/orgs/supabase/discussions/29260).
 
 ## Database setup
 
-Run the Supabase migration so the app has `trips`, `days`, and `places` tables:
-
 1. Create a project at [supabase.com](https://supabase.com).
-2. In the SQL Editor, run the contents of `supabase/migrations/20260222000000_create_trips_days_places.sql`.
+2. In the SQL Editor, run both migration files in order:
+   - `supabase/migrations/20260222000000_create_trips_days_places.sql` (base schema)
+   - `supabase/migrations/20260225000000_add_weather_descriptions.sql` (weather, descriptions, categories)
 
-Or use the Supabase CLI from the project root:
+Or use the Supabase CLI:
 
 ```bash
 supabase link
@@ -42,25 +59,113 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Paste an itinerary, enter a trip name, and click **Enrich and save**.
-
-## Troubleshooting
-
-- **"TypeError: fetch failed" or "ENOTFOUND"** – Usually means `NEXT_PUBLIC_SUPABASE_URL` is wrong or still the placeholder. Set it to your real project URL from [Supabase Dashboard](https://supabase.com/dashboard) → your project → Settings → API (e.g. `https://abcdefghij.supabase.co`). Restart the dev server after changing `.env.local`.
-- **Check all connections** – Open [http://localhost:3000/api/debug-connections](http://localhost:3000/api/debug-connections) to see whether OpenAI, Nominatim, and Supabase respond. Fix any that report `ok: false`.
-
-## Deploy on Vercel
-
-1. Push the repo to GitHub and import the project in [Vercel](https://vercel.com).
-2. Add the same environment variables in the Vercel project (Settings → Environment Variables).
-3. Deploy. The app uses serverless functions and needs no extra config.
+Open [http://localhost:3000](http://localhost:3000). Paste an itinerary, name your trip, and click **Create trip**.
 
 ## Routes
 
-- **`/`** – Paste raw itinerary, trip name, and **Enrich and save** (parse → geocode + photos → save).
-- **`/trips`** – List saved trips.
-- **`/trips/[id]`** – Trip detail: days, episodes, places with image, link, and coordinates (ready for a future map view).
+- **`/`** -- Home: hero section + itinerary input form
+- **`/trips`** -- Grid of saved trips with cover images
+- **`/trips/[id]`** -- Trip detail with three views:
+  - **Daily** -- Day selector, place cards with drag-and-drop, interactive map
+  - **Calendar** -- Month grid with city colors, weather, stop counts
+  - **Timeline** -- Vertical scroll timeline with city transitions
 
-## UX
+## Testing
 
-- **[UX Plan: Airbnb-like look & feel](docs/UX-PLAN-AIRBNB-LIKE.md)** – Senior UX audit and concrete recommendations for visual identity, home/trips/detail pages, navigation, and copy.
+**Unit tests**
+
+```bash
+npm test
+```
+
+30 tests across 3 test files covering schema validation, weather utilities, and action input validation.
+
+**E2E tests (Playwright)**
+
+For the full flow (create trip from itinerary), the app needs your `.env.local` (OpenAI + Supabase). Run the dev server first, then the E2E tests so they use it:
+
+```bash
+# Terminal 1
+npm run dev
+
+# Terminal 2
+npm run test:e2e
+```
+
+- Smoke tests: home and trips list load.
+- Trip detail tests: hero, breadcrumb, Daily/Calendar/Timeline views, Extend trip dialog (require at least one existing trip).
+- Full flow: submits the Vietnam itinerary fixture, waits for redirect to trip detail (requires OpenAI + Supabase; **skipped in CI**).
+
+**CI / pre-deploy:** Run unit tests and E2E (full-flow is skipped when `CI=true`):
+
+```bash
+npm run test:ci
+```
+
+In CI, set `CI=true` so Playwright starts its own server and the long full-flow test is skipped.
+
+## Deploy (e.g. Vercel)
+
+1. Connect the repo to [Vercel](https://vercel.com); the build command is `npm run build`.
+2. Add **Environment Variables** in the project settings (same as `.env.local`):
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `SUPABASE_SECRET_KEY` (or `SUPABASE_SERVICE_ROLE_KEY`)
+   - `OPENAI_API_KEY`
+3. Run migrations on your Supabase project (see Database setup above).
+4. Optional: in Vercel, add a build step that runs `npm run test` (unit tests) before deploy; for E2E, run `npm run test:ci` in a separate CI job with the same env vars if you want the full-flow test.
+
+## Project structure
+
+```
+app/
+  page.tsx                  Home (hero + form)
+  layout.tsx                Root layout (header, fonts, footer)
+  actions.ts                Server actions (enrich, reorder, extend)
+  trips/
+    page.tsx                Trips grid
+    [id]/
+      page.tsx              Trip detail (server component)
+      trip-detail-client.tsx View switcher + daily/calendar/timeline
+
+components/
+  layout/
+    header.tsx              Sticky nav header
+    breadcrumb.tsx          Breadcrumb navigation
+  trip/
+    daily-view.tsx          Day-by-day itinerary with drag-and-drop
+    day-map.tsx             Leaflet map (dynamic import, SSR-safe)
+    day-selector.tsx        Horizontal day strip
+    place-card.tsx          Place listing card
+    sortable-place-card.tsx @dnd-kit sortable wrapper
+    calendar-view.tsx       Month grid calendar
+    timeline-view.tsx       Vertical timeline with animations
+    trip-hero.tsx           Cover image + stats banner
+    trip-stats.tsx          Trip overview sidebar
+    weather-widget.tsx      Compact weather display
+    view-switcher.tsx       Daily/Calendar/Timeline tabs
+    extend-trip-dialog.tsx  Add-a-day dialog
+    skeletons.tsx           Loading skeleton components
+
+lib/
+  schema.ts                Zod schemas + TypeScript types
+  db-types.ts              Database type definitions
+  supabase.ts              Supabase client
+  parse-itinerary.ts       OpenAI itinerary parser
+  enrich-places.ts         Geocoding + images + descriptions + weather
+  save-trip.ts             Database persistence
+  get-trips.ts             Database queries
+  weather.ts               Open-Meteo API client
+  weather-utils.ts         WMO code decoder
+  place-details.ts         AI place description generator
+  recommendations.ts       AI stop recommendations
+```
+
+## Troubleshooting
+
+- **"ENOTFOUND" or fetch errors** -- Check `NEXT_PUBLIC_SUPABASE_URL` in `.env.local`. Use your real project URL (Dashboard → Project Settings → General). See [docs/SUPABASE-SETUP.md](docs/SUPABASE-SETUP.md).
+- **Invalid API key / 401** -- Use a **secret** or **service_role** key for server-side access. New keys: Dashboard → Project Settings → API; use the secret key (`sb_secret_...`) or legacy service_role key.
+- **Debug connections** -- Visit `/api/debug-connections` to verify OpenAI, Nominatim, and Supabase connectivity.
+
+## UX Design
+
+See [docs/UX-PLAN-AIRBNB-LIKE.md](docs/UX-PLAN-AIRBNB-LIKE.md) for the design audit and recommendations that informed this implementation.

@@ -17,7 +17,7 @@ export const parsedEpisodesSchema = z.object({
 });
 
 export const parsedDaySchema = z.object({
-  date: z.string(), // YYYY-MM-DD
+  date: z.string(),
   place: z.string(),
   theme: z.string().optional(),
   summary: z.string(),
@@ -33,18 +33,28 @@ export type ParsedEpisodes = z.infer<typeof parsedEpisodesSchema>;
 export type ParsedDay = z.infer<typeof parsedDaySchema>;
 export type ParsedItinerary = z.infer<typeof parsedItinerarySchema>;
 
-// Enriched place (after geocode + photo) - still in-memory before save
+const categoryEnum = z.enum(["sight", "food", "nightlife", "transport", "accommodation", "activity"]);
+export type PlaceCategory = z.infer<typeof categoryEnum>;
+
 export const enrichedPlaceSchema = parsedPlaceSchema.extend({
   lat: z.number().nullable(),
   lng: z.number().nullable(),
   imageUrl: z.string().nullable(),
   episode: z.enum(episodeKeys),
   sortOrder: z.number(),
+  descriptionLong: z.string().nullable().optional(),
+  category: categoryEnum.nullable().optional(),
+  durationMinutes: z.number().nullable().optional(),
+  addressShort: z.string().nullable().optional(),
 });
 export type EnrichedPlace = z.infer<typeof enrichedPlaceSchema>;
 
 export const enrichedDaySchema = parsedDaySchema.extend({
   places: z.array(enrichedPlaceSchema),
+  weatherHighC: z.number().nullable().optional(),
+  weatherLowC: z.number().nullable().optional(),
+  weatherCondition: z.string().nullable().optional(),
+  weatherIcon: z.string().nullable().optional(),
 });
 export type EnrichedDay = z.infer<typeof enrichedDaySchema>;
 

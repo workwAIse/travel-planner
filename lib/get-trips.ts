@@ -1,15 +1,29 @@
 import { getSupabase } from "./supabase";
 import type { TripWithDaysAndPlaces } from "./db-types";
 
-export async function getTrips(): Promise<{ id: string; name: string; created_at: string }[]> {
+export async function getTrips(): Promise<{
+  id: string;
+  name: string;
+  created_at: string;
+  start_date: string | null;
+  end_date: string | null;
+  cover_image_url: string | null;
+}[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("trips")
-    .select("id, name, created_at")
+    .select("id, name, created_at, start_date, end_date, cover_image_url")
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return (data ?? []) as { id: string; name: string; created_at: string }[];
+  return (data ?? []) as {
+    id: string;
+    name: string;
+    created_at: string;
+    start_date: string | null;
+    end_date: string | null;
+    cover_image_url: string | null;
+  }[];
 }
 
 export async function getTripById(id: string): Promise<TripWithDaysAndPlaces | null> {
