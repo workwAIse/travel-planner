@@ -44,16 +44,16 @@ type PlaceCardProps = {
 };
 
 const categoryColors: Record<string, string> = {
-  sight: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  food: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+  sight: "bg-[#1F5F61]/10 text-[#1F5F61] dark:bg-[#5AA6A8]/15 dark:text-[#5AA6A8]",
+  food: "bg-[#C65D3B]/10 text-[#C65D3B] dark:bg-[#E07A57]/15 dark:text-[#E07A57]",
   nightlife:
     "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
   transport:
-    "bg-gray-100 text-gray-700 dark:bg-gray-800/60 dark:text-gray-300",
+    "bg-[#E7DED5] text-[#7A6F66] dark:bg-[rgba(255,255,255,0.08)] dark:text-[rgba(250,246,241,0.60)]",
   accommodation:
-    "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+    "bg-[#2FB171]/10 text-[#2FB171] dark:bg-[#36C07B]/15 dark:text-[#36C07B]",
   activity:
-    "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+    "bg-[#D9A441]/12 text-[#8B6914] dark:bg-[#E3B24A]/15 dark:text-[#E3B24A]",
 };
 
 function descriptionText(place: PlaceCardData): string | null {

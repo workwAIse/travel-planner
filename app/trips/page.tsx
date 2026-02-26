@@ -10,7 +10,7 @@ export default async function TripsPage() {
 
   return (
     <main className="flex-1">
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="font-display text-3xl tracking-tight">My Trips</h1>
         </div>

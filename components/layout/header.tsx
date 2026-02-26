@@ -15,10 +15,10 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <MapPinIcon className="size-4" />
+      <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <MapPinIcon className="size-4.5" />
           </div>
           <span className="font-display text-lg font-normal tracking-tight">
             Travel Planner

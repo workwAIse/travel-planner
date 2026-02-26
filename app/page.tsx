@@ -27,7 +27,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-3xl px-4 -mt-8 relative z-10 pb-16">
+      <section className="mx-auto max-w-[640px] px-4 sm:px-6 -mt-8 relative z-10 pb-16">
         <EnrichForm />
 
         {recentTrips.length > 0 && (

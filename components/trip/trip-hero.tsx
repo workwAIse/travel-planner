@@ -39,7 +39,7 @@ export function TripHero({
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-[1200px] px-2">
           <div className="[&_a]:text-white/70 [&_a:hover]:text-white [&_span]:text-white/70 [&_svg]:text-white/50">
             <Breadcrumb items={breadcrumbItems} />
           </div>

@@ -39,82 +39,106 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-2xl: 28px;
+  --radius-3xl: 32px;
+  --radius-4xl: 36px;
+  --shadow-sm: 0 2px 10px rgba(44,31,24,0.06);
+  --shadow-md: 0 8px 24px rgba(44,31,24,0.10);
+  --shadow-lg: 0 18px 48px rgba(44,31,24,0.14);
 }
 
+/* ============================================
+   Premium Lifestyle Travel — Light theme
+   Terracotta + Deep Teal on warm neutrals
+   ============================================ */
 :root {
-  --radius: 1rem;
-  --background: oklch(0.985 0.008 70);
-  --foreground: oklch(0.18 0.02 50);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 50);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 50);
-  --primary: oklch(0.637 0.208 16);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.965 0.008 70);
-  --secondary-foreground: oklch(0.25 0.02 50);
-  --muted: oklch(0.965 0.008 70);
-  --muted-foreground: oklch(0.5 0.01 50);
-  --accent: oklch(0.965 0.008 70);
-  --accent-foreground: oklch(0.25 0.02 50);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.925 0.008 70);
-  --input: oklch(0.925 0.008 70);
-  --ring: oklch(0.637 0.208 16);
-  --chart-1: oklch(0.637 0.208 16);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.98 0.008 70);
-  --sidebar-foreground: oklch(0.18 0.02 50);
-  --sidebar-primary: oklch(0.637 0.208 16);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.965 0.008 70);
-  --sidebar-accent-foreground: oklch(0.25 0.02 50);
-  --sidebar-border: oklch(0.925 0.008 70);
-  --sidebar-ring: oklch(0.637 0.208 16);
+  --radius: 14px;
+
+  /* Neutrals */
+  --background: #F7F3EE;
+  --foreground: #2C1F18;
+  --card: #FFFFFF;
+  --card-foreground: #2C1F18;
+  --popover: #FFFFFF;
+  --popover-foreground: #2C1F18;
+
+  /* Brand accents */
+  --primary: #C65D3B;
+  --primary-foreground: #FFFFFF;
+  --secondary: #FBF8F4;
+  --secondary-foreground: #2C1F18;
+  --muted: #FBF8F4;
+  --muted-foreground: #7A6F66;
+  --accent: #F2E4DF;
+  --accent-foreground: #2C1F18;
+
+  /* Semantic */
+  --destructive: #D64545;
+  --border: #E7DED5;
+  --input: #E7DED5;
+  --ring: #1F5F61;
+
+  /* Chart palette */
+  --chart-1: #C65D3B;
+  --chart-2: #1F5F61;
+  --chart-3: #2FB171;
+  --chart-4: #D9A441;
+  --chart-5: #2D6CDF;
+
+  /* Sidebar */
+  --sidebar: #FBF8F4;
+  --sidebar-foreground: #2C1F18;
+  --sidebar-primary: #C65D3B;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F2E4DF;
+  --sidebar-accent-foreground: #2C1F18;
+  --sidebar-border: #E7DED5;
+  --sidebar-ring: #1F5F61;
 }
 
+/* ============================================
+   Dark theme — candlelit espresso bar
+   ============================================ */
 .dark {
-  --background: oklch(0.145 0.015 50);
-  --foreground: oklch(0.985 0.005 70);
-  --card: oklch(0.195 0.015 50);
-  --card-foreground: oklch(0.985 0.005 70);
-  --popover: oklch(0.195 0.015 50);
-  --popover-foreground: oklch(0.985 0.005 70);
-  --primary: oklch(0.68 0.19 16);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.26 0.015 50);
-  --secondary-foreground: oklch(0.985 0.005 70);
-  --muted: oklch(0.26 0.015 50);
-  --muted-foreground: oklch(0.65 0.01 50);
-  --accent: oklch(0.26 0.015 50);
-  --accent-foreground: oklch(0.985 0.005 70);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.68 0.19 16);
-  --chart-1: oklch(0.68 0.19 16);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.195 0.015 50);
-  --sidebar-foreground: oklch(0.985 0.005 70);
-  --sidebar-primary: oklch(0.68 0.19 16);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.26 0.015 50);
-  --sidebar-accent-foreground: oklch(0.985 0.005 70);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.68 0.19 16);
+  --background: #120B07;
+  --foreground: #FAF6F1;
+  --card: #1A120E;
+  --card-foreground: #FAF6F1;
+  --popover: #221812;
+  --popover-foreground: #FAF6F1;
+
+  --primary: #E07A57;
+  --primary-foreground: #FAF6F1;
+  --secondary: #221812;
+  --secondary-foreground: #FAF6F1;
+  --muted: #1A120E;
+  --muted-foreground: rgba(250,246,241,0.60);
+  --accent: rgba(224,122,87,0.14);
+  --accent-foreground: #FAF6F1;
+
+  --destructive: #FF5A5A;
+  --border: rgba(255,255,255,0.10);
+  --input: rgba(255,255,255,0.12);
+  --ring: #5AA6A8;
+
+  --chart-1: #E07A57;
+  --chart-2: #5AA6A8;
+  --chart-3: #36C07B;
+  --chart-4: #E3B24A;
+  --chart-5: #6CA8FF;
+
+  --sidebar: #1A120E;
+  --sidebar-foreground: #FAF6F1;
+  --sidebar-primary: #E07A57;
+  --sidebar-primary-foreground: #FAF6F1;
+  --sidebar-accent: rgba(224,122,87,0.14);
+  --sidebar-accent-foreground: #FAF6F1;
+  --sidebar-border: rgba(255,255,255,0.10);
+  --sidebar-ring: #5AA6A8;
 }
 
 @layer base {
