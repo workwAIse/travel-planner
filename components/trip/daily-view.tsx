@@ -177,7 +177,7 @@ function DayContent({
 
   return (
     <div className="space-y-6 min-w-0">
-      <div className="space-y-1">
+      <div className="space-y-2">
         <div className="flex items-center gap-3 flex-wrap">
           <h2 className="text-xl font-semibold">
             Day {dayNumber} · {dateStr}
@@ -189,12 +189,17 @@ function DayContent({
             lowC={day.weather_low_c}
           />
         </div>
-        <p className="text-sm font-medium text-muted-foreground">{day.place}</p>
-        {day.theme && (
-          <p className="text-sm text-muted-foreground">{day.theme}</p>
-        )}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="font-medium">{day.place}</span>
+          {day.theme && (
+            <>
+              <span>·</span>
+              <span className="italic">{day.theme}</span>
+            </>
+          )}
+        </div>
         {day.summary && (
-          <p className="text-sm mt-1">{day.summary}</p>
+          <p className="text-sm leading-relaxed max-w-prose">{day.summary}</p>
         )}
       </div>
 
