@@ -40,6 +40,7 @@ export type Place = {
   category: string | null;
   duration_minutes: number | null;
   address_short: string | null;
+  user_notes: string | null;
 };
 
 export type TripWithDaysAndPlaces = Trip & {

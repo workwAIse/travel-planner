@@ -45,6 +45,96 @@ export async function enrichAndSaveTrip(
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
+export async function updatePlaceNotes(
+  placeId: string,
+  notes: string | null
+): Promise<ActionResult> {
+  try {
+    const supabase = getSupabase();
+    const { error } = await supabase
+      .from("places")
+      .update({ user_notes: notes })
+      .eq("id", placeId);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/trips");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to save note." };
+  }
+}
+
+export async function deletePlace(
+  placeId: string,
+  dayId: string
+): Promise<ActionResult> {
+  try {
+    const supabase = getSupabase();
+    const { error } = await supabase
+      .from("places")
+      .delete()
+      .eq("id", placeId);
+    if (error) return { ok: false, error: error.message };
+
+    await updateDaySummary(supabase, dayId);
+
+    revalidatePath("/trips");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to remove stop." };
+  }
+}
+
+export async function updateTrip(
+  tripId: string,
+  name: string,
+  startDate: string | null,
+  endDate: string | null
+): Promise<ActionResult> {
+  try {
+    const supabase = getSupabase();
+    const trimmedName = name.trim();
+    if (!trimmedName) return { ok: false, error: "Trip name is required." };
+
+    const updates: Record<string, unknown> = { name: trimmedName };
+    if (startDate !== undefined) updates.start_date = startDate;
+    if (endDate !== undefined) updates.end_date = endDate;
+
+    const { error } = await supabase
+      .from("trips")
+      .update(updates)
+      .eq("id", tripId);
+    if (error) return { ok: false, error: error.message };
+
+    if (startDate && endDate) {
+      const { data: days } = await supabase
+        .from("days")
+        .select("id, date")
+        .eq("trip_id", tripId)
+        .order("date");
+
+      if (days && days.length > 0) {
+        const oldStart = new Date(days[0].date + "T00:00:00");
+        const newStart = new Date(startDate + "T00:00:00");
+        const diffDays = Math.round((newStart.getTime() - oldStart.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (diffDays !== 0) {
+          for (const day of days) {
+            const d = new Date(day.date + "T00:00:00");
+            d.setDate(d.getDate() + diffDays);
+            const newDate = d.toISOString().split("T")[0];
+            await supabase.from("days").update({ date: newDate }).eq("id", day.id);
+          }
+        }
+      }
+    }
+
+    revalidatePath("/trips");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to update trip." };
+  }
+}
+
 export async function reorderPlaces(
   dayId: string,
   placeIds: string[]

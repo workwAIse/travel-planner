@@ -1,15 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   MapPinIcon,
   ClockIcon,
   ExternalLinkIcon,
   GripVerticalIcon,
   ArrowRightLeftIcon,
+  StickyNoteIcon,
+  Trash2Icon,
+  Loader2Icon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SwapPlaceDialog } from "./swap-place-dialog";
+import { updatePlaceNotes, deletePlace } from "@/app/actions";
 
 export type PlaceCardData = {
   id: string;
@@ -25,6 +31,7 @@ export type PlaceCardData = {
   category: string | null;
   duration_minutes: number | null;
   address_short: string | null;
+  user_notes: string | null;
 };
 
 type PlaceCardProps = {
@@ -63,12 +70,42 @@ export function PlaceCard({
   dragHandleProps,
   dayId,
 }: PlaceCardProps) {
+  const router = useRouter();
   const [expanded, setExpanded] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [notes, setNotes] = useState(place.user_notes ?? "");
+  const [savingNotes, startSaveTransition] = useTransition();
+  const [deleting, startDeleteTransition] = useTransition();
   const desc = descriptionText(place);
   const isLong = desc != null && desc.length > 120;
   const catColor =
     categoryColors[(place.category ?? "").toLowerCase()] ??
     categoryColors.sight;
+
+  function handleSaveNotes() {
+    startSaveTransition(async () => {
+      const result = await updatePlaceNotes(place.id, notes.trim() || null);
+      if (result.ok) {
+        toast.success("Note saved");
+        setShowNotes(false);
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  function handleDelete() {
+    if (!dayId) return;
+    startDeleteTransition(async () => {
+      const result = await deletePlace(place.id, dayId);
+      if (result.ok) {
+        toast.success(`Removed ${place.name}`);
+        router.refresh();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
 
   return (
     <div
@@ -143,6 +180,45 @@ export function PlaceCard({
           </div>
         )}
 
+        {place.user_notes && !showNotes && (
+          <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-2.5 py-1.5 text-xs text-amber-800 dark:text-amber-200">
+            <div className="flex items-start gap-1.5">
+              <StickyNoteIcon className="size-3 mt-0.5 shrink-0" />
+              <span className="whitespace-pre-wrap">{place.user_notes}</span>
+            </div>
+          </div>
+        )}
+
+        {showNotes && (
+          <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add a personal note… (e.g. book tickets, opens at 9am)"
+              rows={2}
+              className="w-full rounded-md border bg-background px-2.5 py-1.5 text-xs resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+              autoFocus
+            />
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleSaveNotes}
+                disabled={savingNotes}
+                className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {savingNotes ? <Loader2Icon className="size-3 animate-spin" /> : "Save"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowNotes(false); setNotes(place.user_notes ?? ""); }}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-1 text-[11px] text-muted-foreground">
           {place.duration_minutes != null && (
             <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5">
@@ -156,18 +232,38 @@ export function PlaceCard({
           )}
 
           <span className="flex items-center gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setShowNotes(!showNotes); }}
+              className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground font-medium"
+              title={place.user_notes ? "Edit note" : "Add note"}
+            >
+              <StickyNoteIcon className="size-3" />
+              {place.user_notes ? "Edit note" : "Note"}
+            </button>
             {dayId && (
-              <SwapPlaceDialog placeId={place.id} dayId={dayId} placeName={place.name}>
+              <>
+                <SwapPlaceDialog placeId={place.id} dayId={dayId} placeName={place.name}>
+                  <button
+                    type="button"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-primary hover:underline font-medium"
+                    title="Suggest AI alternative"
+                  >
+                    <ArrowRightLeftIcon className="size-3" />
+                    Swap
+                  </button>
+                </SwapPlaceDialog>
                 <button
                   type="button"
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center gap-1 text-primary hover:underline font-medium"
-                  title="Suggest AI alternative"
+                  onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+                  disabled={deleting}
+                  className="inline-flex items-center gap-1 text-muted-foreground hover:text-destructive font-medium"
+                  title="Remove stop"
                 >
-                  <ArrowRightLeftIcon className="size-3" />
-                  Swap
+                  {deleting ? <Loader2Icon className="size-3 animate-spin" /> : <Trash2Icon className="size-3" />}
                 </button>
-              </SwapPlaceDialog>
+              </>
             )}
             {place.google_maps_url && (
               <a

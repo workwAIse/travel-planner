@@ -6,6 +6,7 @@ import { DailyView } from "@/components/trip/daily-view";
 import { CalendarView } from "@/components/trip/calendar-view";
 import { TimelineView } from "@/components/trip/timeline-view";
 import { ExtendTripDialog } from "@/components/trip/extend-trip-dialog";
+import { EditTripDialog } from "@/components/trip/edit-trip-dialog";
 import { DeleteTripButton } from "@/components/trip/delete-trip-button";
 import type { TripWithDaysAndPlaces } from "@/lib/db-types";
 
@@ -29,6 +30,12 @@ export function TripDetailClient({ trip }: Props) {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <ViewSwitcher activeView={activeView} onViewChange={setActiveView} />
         <div className="flex items-center gap-2">
+          <EditTripDialog
+            tripId={trip.id}
+            currentName={trip.name}
+            currentStartDate={trip.start_date}
+            currentEndDate={trip.end_date}
+          />
           <DeleteTripButton tripId={trip.id} tripName={trip.name} />
           <ExtendTripDialog
             tripId={trip.id}
