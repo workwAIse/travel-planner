@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { ClockIcon, MapIcon, XIcon } from "lucide-react";
 import { DaySelector } from "./day-selector";
 import { SortablePlaceCard } from "./sortable-place-card";
+import { AddStopDialog } from "./add-stop-dialog";
 import { WeatherWidget } from "./weather-widget";
 import { DayMap } from "./day-map";
 import { Button } from "@/components/ui/button";
@@ -216,8 +217,20 @@ function DayContent({
               let globalIndex = 0;
               return episodeOrder.map((ep) => {
                 const places = optimisticPlaces.filter((p) => p.episode === ep);
-                if (places.length === 0) return null;
                 const startIndex = globalIndex;
+                if (places.length === 0) {
+                  return (
+                    <section key={ep} className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <ClockIcon className="size-3.5 text-muted-foreground" />
+                        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                          {ep}
+                        </h3>
+                      </div>
+                      <AddStopDialog dayId={day.id} episode={ep} city={day.place} />
+                    </section>
+                  );
+                }
                 globalIndex += places.length;
                 return (
                   <section key={ep} className="space-y-3">
@@ -239,6 +252,7 @@ function DayContent({
                         />
                       ))}
                     </div>
+                    <AddStopDialog dayId={day.id} episode={ep} city={day.place} />
                   </section>
                 );
               });
