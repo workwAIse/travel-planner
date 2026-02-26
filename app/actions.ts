@@ -83,6 +83,43 @@ export async function movePlaceToEpisode(
   }
 }
 
+export async function deleteTrip(tripId: string): Promise<ActionResult> {
+  try {
+    const supabase = getSupabase();
+
+    const { data: days } = await supabase
+      .from("days")
+      .select("id")
+      .eq("trip_id", tripId);
+
+    if (days && days.length > 0) {
+      const dayIds = days.map((d) => d.id);
+      const { error: placesError } = await supabase
+        .from("places")
+        .delete()
+        .in("day_id", dayIds);
+      if (placesError) return { ok: false, error: placesError.message };
+    }
+
+    const { error: daysError } = await supabase
+      .from("days")
+      .delete()
+      .eq("trip_id", tripId);
+    if (daysError) return { ok: false, error: daysError.message };
+
+    const { error: tripError } = await supabase
+      .from("trips")
+      .delete()
+      .eq("id", tripId);
+    if (tripError) return { ok: false, error: tripError.message };
+
+    revalidatePath("/trips");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to delete trip." };
+  }
+}
+
 export async function extendTrip(
   tripId: string,
   afterDate: string,

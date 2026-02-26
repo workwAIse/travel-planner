@@ -7,6 +7,7 @@ import { CalendarView } from "@/components/trip/calendar-view";
 import { TimelineView } from "@/components/trip/timeline-view";
 import { TripStats } from "@/components/trip/trip-stats";
 import { ExtendTripDialog } from "@/components/trip/extend-trip-dialog";
+import { DeleteTripButton } from "@/components/trip/delete-trip-button";
 import type { TripWithDaysAndPlaces } from "@/lib/db-types";
 
 type Props = {
@@ -28,14 +29,17 @@ export function TripDetailClient({ trip }: Props) {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <ViewSwitcher activeView={activeView} onViewChange={setActiveView} />
-        <ExtendTripDialog
+        <div className="flex items-center gap-2">
+          <DeleteTripButton tripId={trip.id} tripName={trip.name} />
+          <ExtendTripDialog
           tripId={trip.id}
           days={trip.days.map((d) => ({
             id: d.id,
             date: d.date,
             place: d.place,
           }))}
-        />
+          />
+        </div>
       </div>
 
       {activeView === "daily" && (

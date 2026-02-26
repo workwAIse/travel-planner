@@ -17,11 +17,12 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { toast } from "sonner";
-import { ClockIcon } from "lucide-react";
+import { ClockIcon, MapIcon, XIcon } from "lucide-react";
 import { DaySelector } from "./day-selector";
 import { SortablePlaceCard } from "./sortable-place-card";
 import { WeatherWidget } from "./weather-widget";
 import { DayMap } from "./day-map";
+import { Button } from "@/components/ui/button";
 import { reorderPlaces } from "@/app/actions";
 import type { Day, Place } from "@/lib/db-types";
 
@@ -32,6 +33,7 @@ type DailyViewProps = {
 export function DailyView({ days }: DailyViewProps) {
   const [activeDayId, setActiveDayId] = useState(days[0]?.id ?? "");
   const [activePlace, setActivePlace] = useState<string | null>(null);
+  const [showMobileMap, setShowMobileMap] = useState(false);
 
   const activeDay = days.find((d) => d.id === activeDayId) ?? days[0];
   if (!activeDay) return null;
@@ -59,7 +61,7 @@ export function DailyView({ days }: DailyViewProps) {
           onPlaceSelect={setActivePlace}
         />
 
-        <div className="lg:sticky lg:top-20 lg:self-start space-y-4">
+        <div className="hidden lg:block lg:sticky lg:top-20 lg:self-start space-y-4">
           <DayMap
             places={activeDay.places.map((p) => ({
               id: p.id,
@@ -74,6 +76,48 @@ export function DailyView({ days }: DailyViewProps) {
           />
         </div>
       </div>
+
+      {/* Mobile map FAB */}
+      <div className="lg:hidden fixed bottom-6 right-6 z-40">
+        <Button
+          size="lg"
+          className="rounded-full shadow-lg size-14"
+          onClick={() => setShowMobileMap(true)}
+        >
+          <MapIcon className="size-5" />
+          <span className="sr-only">Show map</span>
+        </Button>
+      </div>
+
+      {/* Mobile map overlay */}
+      {showMobileMap && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b">
+            <h3 className="font-semibold">Day {dayIndex + 1} Map</h3>
+            <Button variant="ghost" size="icon" onClick={() => setShowMobileMap(false)}>
+              <XIcon className="size-5" />
+              <span className="sr-only">Close map</span>
+            </Button>
+          </div>
+          <div className="flex-1 p-4">
+            <DayMap
+              places={activeDay.places.map((p) => ({
+                id: p.id,
+                name: p.name,
+                lat: p.lat,
+                lng: p.lng,
+                episode: p.episode,
+                sort_order: p.sort_order,
+              }))}
+              activePlace={activePlace}
+              onPlaceClick={(id) => {
+                setActivePlace(id);
+                setShowMobileMap(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

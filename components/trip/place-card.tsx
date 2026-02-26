@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   MapPinIcon,
   ClockIcon,
@@ -58,7 +59,9 @@ export function PlaceCard({
   onSelect,
   dragHandleProps,
 }: PlaceCardProps) {
+  const [expanded, setExpanded] = useState(false);
   const desc = descriptionText(place);
+  const isLong = desc != null && desc.length > 120;
   const catColor =
     categoryColors[(place.category ?? "").toLowerCase()] ??
     categoryColors.sight;
@@ -122,7 +125,18 @@ export function PlaceCard({
         </div>
 
         {desc && (
-          <p className="text-xs text-muted-foreground line-clamp-2">{desc}</p>
+          <div>
+            <p className={cn("text-xs text-muted-foreground", !expanded && "line-clamp-2")}>{desc}</p>
+            {isLong && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+                className="text-xs text-primary hover:underline mt-0.5 font-medium"
+              >
+                {expanded ? "Show less" : "Read more"}
+              </button>
+            )}
+          </div>
         )}
 
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-1 text-[11px] text-muted-foreground">

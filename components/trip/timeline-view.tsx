@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 import { format } from "date-fns";
-import { PlaneIcon, MapPinIcon } from "lucide-react";
+import { PlaneIcon, MapPinIcon, ClockIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type TimelineViewProps = {
   days: Array<{
@@ -22,6 +23,15 @@ type TimelineViewProps = {
     }>;
   }>;
   onDaySelect: (dayId: string) => void;
+};
+
+const categoryColors: Record<string, string> = {
+  sight: "border-blue-300 dark:border-blue-700",
+  food: "border-orange-300 dark:border-orange-700",
+  nightlife: "border-purple-300 dark:border-purple-700",
+  transport: "border-gray-300 dark:border-gray-600",
+  accommodation: "border-green-300 dark:border-green-700",
+  activity: "border-amber-300 dark:border-amber-700",
 };
 
 export function TimelineView({ days, onDaySelect }: TimelineViewProps) {
@@ -78,7 +88,6 @@ function DayNode({
 }) {
   const dateObj = new Date(day.date + "T00:00:00");
   const label = `Day ${dayNumber} · ${format(dateObj, "EEE, MMM d")}`;
-  const topPlaces = day.places.slice(0, 3);
 
   return (
     <motion.div
@@ -108,36 +117,55 @@ function DayNode({
 
         <p className="mt-0.5 text-sm font-medium text-muted-foreground">
           {day.place}
+          {day.theme && <span className="ml-1.5 text-xs">· {day.theme}</span>}
         </p>
 
         {day.summary && (
-          <p className="mt-1 text-xs text-muted-foreground line-clamp-1">
+          <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
             {day.summary}
           </p>
         )}
 
-        {topPlaces.length > 0 && (
-          <div className="mt-2 flex items-center gap-2">
-            {topPlaces.map((p) => (
-              <div key={p.id} className="flex items-center gap-1.5">
-                <div className="size-8 shrink-0 overflow-hidden rounded-md bg-muted">
-                  {p.image_url ? (
-                    <img
-                      src={p.image_url}
-                      alt={p.name}
-                      className="size-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex size-full items-center justify-center text-muted-foreground">
-                      <MapPinIcon className="size-3" />
-                    </div>
-                  )}
+        {day.places.length > 0 && (
+          <div className="mt-3 space-y-1.5">
+            {day.places.map((p) => {
+              const borderColor = categoryColors[(p.category ?? "").toLowerCase()] ?? "border-border";
+              return (
+                <div key={p.id} className="flex items-center gap-2.5">
+                  <div
+                    className={cn(
+                      "size-10 shrink-0 overflow-hidden rounded-lg bg-muted border-2",
+                      borderColor
+                    )}
+                  >
+                    {p.image_url ? (
+                      <img
+                        src={p.image_url}
+                        alt={p.name}
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex size-full items-center justify-center text-muted-foreground">
+                        <MapPinIcon className="size-3.5" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-xs font-medium truncate block">{p.name}</span>
+                    {p.category && (
+                      <span className="text-[10px] text-muted-foreground capitalize">{p.category}</span>
+                    )}
+                  </div>
                 </div>
-                <span className="max-w-20 truncate text-xs">{p.name}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
+
+        <div className="mt-3 flex items-center gap-1.5 text-xs text-primary font-medium">
+          <ClockIcon className="size-3" />
+          {day.places.length} {day.places.length === 1 ? "stop" : "stops"} · View details →
+        </div>
       </button>
     </motion.div>
   );
