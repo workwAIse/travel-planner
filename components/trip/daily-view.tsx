@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useOptimistic, useTransition } from "react";
+import { useState, useEffect, useCallback, useOptimistic, useTransition } from "react";
 import {
   DndContext,
   closestCenter,
@@ -38,6 +38,10 @@ export function DailyView({ trip }: DailyViewProps) {
   const [activePlace, setActivePlace] = useState<string | null>(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
   const [mapPlaces, setMapPlaces] = useState<Place[] | null>(null);
+
+  useEffect(() => {
+    setMapPlaces(null);
+  }, [trip]);
 
   const activeDay = days.find((d) => d.id === activeDayId) ?? days[0];
   if (!activeDay) return null;

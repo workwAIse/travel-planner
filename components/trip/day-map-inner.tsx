@@ -26,8 +26,8 @@ export type DayMapProps = {
 };
 
 const EPISODE_COLORS: Record<string, string> = {
-  Morning: "#2563eb",
-  Afternoon: "#ea580c",
+  Morning: "#1F5F61",
+  Afternoon: "#C65D3B",
   Evening: "#7c3aed",
 };
 
@@ -66,25 +66,34 @@ function createNumberedIcon(
   });
 }
 
-function FitBounds({
+function AutoFitBounds({
   positions,
+  placeIds,
 }: {
   positions: L.LatLngExpression[];
+  placeIds: string;
 }) {
   const map = useMap();
-  const fitted = useRef(false);
+  const prevIds = useRef("");
 
   useEffect(() => {
-    if (positions.length === 0 || fitted.current) return;
-    fitted.current = true;
+    if (positions.length === 0) return;
+    if (placeIds === prevIds.current) return;
+    prevIds.current = placeIds;
 
-    if (positions.length === 1) {
-      const [lat, lng] = positions[0] as [number, number];
-      map.setView([lat, lng], 14);
-    } else {
-      map.fitBounds(L.latLngBounds(positions), { padding: [40, 40] });
-    }
-  }, [map, positions]);
+    requestAnimationFrame(() => {
+      if (positions.length === 1) {
+        const [lat, lng] = positions[0] as [number, number];
+        map.setView([lat, lng], 14, { animate: true });
+      } else {
+        map.fitBounds(L.latLngBounds(positions), {
+          padding: [40, 40],
+          animate: true,
+          maxZoom: 16,
+        });
+      }
+    });
+  }, [map, positions, placeIds]);
 
   return null;
 }
@@ -110,6 +119,11 @@ export function DayMapInner({
     [validPlaces],
   );
 
+  const placeIds = useMemo(
+    () => validPlaces.map((p) => p.id).join(","),
+    [validPlaces],
+  );
+
   if (validPlaces.length === 0) {
     return (
       <div className="aspect-square sm:aspect-[16/9] rounded-xl bg-muted flex items-center justify-center text-sm text-muted-foreground">
@@ -131,11 +145,11 @@ export function DayMapInner({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <FitBounds positions={positions} />
+        <AutoFitBounds positions={positions} placeIds={placeIds} />
 
         {validPlaces.map((place, idx) => (
           <Marker
-            key={place.id}
+            key={`${place.id}-${idx}`}
             position={[place.lat, place.lng]}
             icon={createNumberedIcon(
               idx + 1,
@@ -153,6 +167,7 @@ export function DayMapInner({
         ))}
 
         <Polyline
+          key={placeIds}
           positions={positions}
           pathOptions={{
             color: "#94a3b8",
