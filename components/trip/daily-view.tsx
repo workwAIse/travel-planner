@@ -21,17 +21,19 @@ import { ClockIcon, MapIcon, XIcon } from "lucide-react";
 import { DaySelector } from "./day-selector";
 import { SortablePlaceCard } from "./sortable-place-card";
 import { AddStopDialog } from "./add-stop-dialog";
+import { TripStats } from "./trip-stats";
 import { WeatherWidget } from "./weather-widget";
 import { DayMap } from "./day-map";
 import { Button } from "@/components/ui/button";
 import { reorderPlaces } from "@/app/actions";
-import type { Day, Place } from "@/lib/db-types";
+import type { Day, Place, TripWithDaysAndPlaces } from "@/lib/db-types";
 
 type DailyViewProps = {
-  days: (Day & { places: Place[] })[];
+  trip: TripWithDaysAndPlaces;
 };
 
-export function DailyView({ days }: DailyViewProps) {
+export function DailyView({ trip }: DailyViewProps) {
+  const days = trip.days;
   const [activeDayId, setActiveDayId] = useState(days[0]?.id ?? "");
   const [activePlace, setActivePlace] = useState<string | null>(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
@@ -41,6 +43,14 @@ export function DailyView({ days }: DailyViewProps) {
   if (!activeDay) return null;
 
   const dayIndex = days.findIndex((d) => d.id === activeDay.id);
+  const placesForMap = (mapPlaces ?? activeDay.places).map((p, i) => ({
+    id: p.id,
+    name: p.name,
+    lat: p.lat,
+    lng: p.lng,
+    episode: p.episode,
+    sort_order: i,
+  }));
 
   return (
     <div className="space-y-6">
@@ -55,7 +65,7 @@ export function DailyView({ days }: DailyViewProps) {
         onDaySelect={(id) => { setActiveDayId(id); setMapPlaces(null); }}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <DayContent
           day={activeDay}
           dayNumber={dayIndex + 1}
@@ -64,19 +74,11 @@ export function DailyView({ days }: DailyViewProps) {
           onPlacesReorder={setMapPlaces}
         />
 
-        <div className="hidden lg:block lg:sticky lg:top-20 lg:self-start space-y-4">
-          <DayMap
-            places={(mapPlaces ?? activeDay.places).map((p, i) => ({
-              id: p.id,
-              name: p.name,
-              lat: p.lat,
-              lng: p.lng,
-              episode: p.episode,
-              sort_order: i,
-            }))}
-            activePlace={activePlace}
-            onPlaceClick={setActivePlace}
-          />
+        <div className="hidden lg:block space-y-4">
+          <div className="lg:sticky lg:top-20 space-y-4">
+            <DayMap places={placesForMap} activePlace={activePlace} onPlaceClick={setActivePlace} />
+            <TripStats trip={trip} />
+          </div>
         </div>
       </div>
 
@@ -104,14 +106,7 @@ export function DailyView({ days }: DailyViewProps) {
           </div>
           <div className="flex-1 p-4">
             <DayMap
-              places={(mapPlaces ?? activeDay.places).map((p, i) => ({
-                id: p.id,
-                name: p.name,
-                lat: p.lat,
-                lng: p.lng,
-                episode: p.episode,
-                sort_order: i,
-              }))}
+              places={placesForMap}
               activePlace={activePlace}
               onPlaceClick={(id) => {
                 setActivePlace(id);
@@ -181,7 +176,7 @@ function DayContent({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0">
       <div className="space-y-1">
         <div className="flex items-center gap-3 flex-wrap">
           <h2 className="text-xl font-semibold">

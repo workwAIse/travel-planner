@@ -22,46 +22,48 @@ export function TripStats({ trip }: TripStatsProps) {
   });
 
   return (
-    <div className="rounded-xl border bg-card p-5 space-y-4">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="rounded-xl border bg-card p-4 space-y-3">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Trip overview
       </h3>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <Stat
-          icon={<CalendarIcon className="size-4" />}
+          icon={<CalendarIcon className="size-3.5" />}
           label="Days"
           value={String(trip.days.length)}
         />
         <Stat
-          icon={<MapPinIcon className="size-4" />}
+          icon={<MapPinIcon className="size-3.5" />}
           label="Stops"
           value={String(totalPlaces)}
         />
         <Stat
-          icon={<NavigationIcon className="size-4" />}
+          icon={<NavigationIcon className="size-3.5" />}
           label="Cities"
           value={String(cities.length)}
         />
         <Stat
-          icon={<SunIcon className="size-4" />}
+          icon={<SunIcon className="size-3.5" />}
           label="Est. time"
           value={hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`}
         />
       </div>
 
-      <div className="space-y-2 pt-2 border-t">
-        <h4 className="text-xs font-medium text-muted-foreground">Route</h4>
-        <div className="flex flex-wrap items-center gap-1 text-sm">
-          {cityBreakdown.map((item, i) => (
-            <span key={item.city} className="flex items-center gap-1">
-              {i > 0 && <span className="text-muted-foreground">→</span>}
-              <span className="font-medium">{item.city}</span>
-              <span className="text-xs text-muted-foreground">({item.count}d)</span>
-            </span>
-          ))}
+      {cityBreakdown.length > 1 && (
+        <div className="space-y-1.5 pt-2 border-t">
+          <h4 className="text-xs font-medium text-muted-foreground">Route</h4>
+          <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs">
+            {cityBreakdown.map((item, i) => (
+              <span key={item.city} className="flex items-center gap-0.5">
+                {i > 0 && <span className="text-muted-foreground">→</span>}
+                <span className="font-medium">{item.city}</span>
+                <span className="text-muted-foreground">({item.count}d)</span>
+              </span>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -76,11 +78,11 @@ function Stat({
   value: string;
 }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-lg bg-muted/50 p-2.5">
+    <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-2">
       <div className="text-primary">{icon}</div>
       <div>
-        <p className="text-sm font-semibold">{value}</p>
-        <p className="text-[11px] text-muted-foreground">{label}</p>
+        <p className="text-sm font-semibold leading-tight">{value}</p>
+        <p className="text-[10px] text-muted-foreground">{label}</p>
       </div>
     </div>
   );

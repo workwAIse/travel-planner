@@ -5,7 +5,6 @@ import { ViewSwitcher } from "@/components/trip/view-switcher";
 import { DailyView } from "@/components/trip/daily-view";
 import { CalendarView } from "@/components/trip/calendar-view";
 import { TimelineView } from "@/components/trip/timeline-view";
-import { TripStats } from "@/components/trip/trip-stats";
 import { ExtendTripDialog } from "@/components/trip/extend-trip-dialog";
 import { DeleteTripButton } from "@/components/trip/delete-trip-button";
 import type { TripWithDaysAndPlaces } from "@/lib/db-types";
@@ -27,29 +26,22 @@ export function TripDetailClient({ trip }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <ViewSwitcher activeView={activeView} onViewChange={setActiveView} />
         <div className="flex items-center gap-2">
           <DeleteTripButton tripId={trip.id} tripName={trip.name} />
           <ExtendTripDialog
-          tripId={trip.id}
-          days={trip.days.map((d) => ({
-            id: d.id,
-            date: d.date,
-            place: d.place,
-          }))}
+            tripId={trip.id}
+            days={trip.days.map((d) => ({
+              id: d.id,
+              date: d.date,
+              place: d.place,
+            }))}
           />
         </div>
       </div>
 
-      {activeView === "daily" && (
-        <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-          <DailyView days={trip.days} />
-          <aside className="hidden lg:block lg:sticky lg:top-20 lg:self-start">
-            <TripStats trip={trip} />
-          </aside>
-        </div>
-      )}
+      {activeView === "daily" && <DailyView trip={trip} />}
 
       {activeView === "calendar" && (
         <CalendarView
