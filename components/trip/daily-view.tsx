@@ -34,6 +34,7 @@ export function DailyView({ days }: DailyViewProps) {
   const [activeDayId, setActiveDayId] = useState(days[0]?.id ?? "");
   const [activePlace, setActivePlace] = useState<string | null>(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
+  const [mapPlaces, setMapPlaces] = useState<Place[] | null>(null);
 
   const activeDay = days.find((d) => d.id === activeDayId) ?? days[0];
   if (!activeDay) return null;
@@ -50,7 +51,7 @@ export function DailyView({ days }: DailyViewProps) {
           dayNumber: i + 1,
         }))}
         activeDayId={activeDay.id}
-        onDaySelect={setActiveDayId}
+        onDaySelect={(id) => { setActiveDayId(id); setMapPlaces(null); }}
       />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
@@ -59,17 +60,18 @@ export function DailyView({ days }: DailyViewProps) {
           dayNumber={dayIndex + 1}
           activePlace={activePlace}
           onPlaceSelect={setActivePlace}
+          onPlacesReorder={setMapPlaces}
         />
 
         <div className="hidden lg:block lg:sticky lg:top-20 lg:self-start space-y-4">
           <DayMap
-            places={activeDay.places.map((p) => ({
+            places={(mapPlaces ?? activeDay.places).map((p, i) => ({
               id: p.id,
               name: p.name,
               lat: p.lat,
               lng: p.lng,
               episode: p.episode,
-              sort_order: p.sort_order,
+              sort_order: i,
             }))}
             activePlace={activePlace}
             onPlaceClick={setActivePlace}
@@ -101,13 +103,13 @@ export function DailyView({ days }: DailyViewProps) {
           </div>
           <div className="flex-1 p-4">
             <DayMap
-              places={activeDay.places.map((p) => ({
+              places={(mapPlaces ?? activeDay.places).map((p, i) => ({
                 id: p.id,
                 name: p.name,
                 lat: p.lat,
                 lng: p.lng,
                 episode: p.episode,
-                sort_order: p.sort_order,
+                sort_order: i,
               }))}
               activePlace={activePlace}
               onPlaceClick={(id) => {
@@ -127,11 +129,13 @@ function DayContent({
   dayNumber,
   activePlace,
   onPlaceSelect,
+  onPlacesReorder,
 }: {
   day: Day & { places: Place[] };
   dayNumber: number;
   activePlace: string | null;
   onPlaceSelect: (id: string) => void;
+  onPlacesReorder?: (places: Place[]) => void;
 }) {
   const [optimisticPlaces, setOptimisticPlaces] = useOptimistic(day.places);
   const [, startTransition] = useTransition();
@@ -159,6 +163,7 @@ function DayContent({
 
       startTransition(async () => {
         setOptimisticPlaces(reordered);
+        onPlacesReorder?.(reordered);
         const result = await reorderPlaces(day.id, newIds);
         if (!result.ok) {
           toast.error(result.error);
@@ -230,6 +235,7 @@ function DayContent({
                           index={startIndex + i}
                           isActive={activePlace === place.id}
                           onSelect={() => onPlaceSelect(place.id)}
+                          dayId={day.id}
                         />
                       ))}
                     </div>

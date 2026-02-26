@@ -6,8 +6,10 @@ import {
   ClockIcon,
   ExternalLinkIcon,
   GripVerticalIcon,
+  ArrowRightLeftIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SwapPlaceDialog } from "./swap-place-dialog";
 
 export type PlaceCardData = {
   id: string;
@@ -31,6 +33,7 @@ type PlaceCardProps = {
   isActive?: boolean;
   onSelect?: () => void;
   dragHandleProps?: Record<string, unknown>;
+  dayId?: string;
 };
 
 const categoryColors: Record<string, string> = {
@@ -58,6 +61,7 @@ export function PlaceCard({
   isActive,
   onSelect,
   dragHandleProps,
+  dayId,
 }: PlaceCardProps) {
   const [expanded, setExpanded] = useState(false);
   const desc = descriptionText(place);
@@ -151,18 +155,33 @@ export function PlaceCard({
             <span className="truncate">{place.address_short}</span>
           )}
 
-          {place.google_maps_url && (
-            <a
-              href={place.google_maps_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1 text-primary hover:underline ml-auto"
-            >
-              <ExternalLinkIcon className="size-3" />
-              Map
-            </a>
-          )}
+          <span className="flex items-center gap-2 ml-auto">
+            {dayId && (
+              <SwapPlaceDialog placeId={place.id} dayId={dayId} placeName={place.name}>
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 text-primary hover:underline font-medium"
+                  title="Suggest AI alternative"
+                >
+                  <ArrowRightLeftIcon className="size-3" />
+                  Swap
+                </button>
+              </SwapPlaceDialog>
+            )}
+            {place.google_maps_url && (
+              <a
+                href={place.google_maps_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-primary hover:underline"
+              >
+                <ExternalLinkIcon className="size-3" />
+                Map
+              </a>
+            )}
+          </span>
         </div>
       </div>
     </div>

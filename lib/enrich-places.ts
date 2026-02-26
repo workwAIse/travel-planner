@@ -104,7 +104,7 @@ export async function enrichItinerary(parsed: ParsedItinerary): Promise<{
   }
 }
 
-async function geocodeNominatim(address: string): Promise<[number | null, number | null]> {
+export async function geocodeNominatim(address: string): Promise<[number | null, number | null]> {
   try {
     const url = new URL("https://nominatim.openstreetmap.org/search");
     url.searchParams.set("q", address);
@@ -122,7 +122,7 @@ async function geocodeNominatim(address: string): Promise<[number | null, number
   }
 }
 
-async function getPlaceImageWikipedia(
+export async function getPlaceImageWikipedia(
   placeName: string,
   cityOrRegion: string,
   _lat?: number,

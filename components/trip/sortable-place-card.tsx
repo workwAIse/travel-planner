@@ -9,6 +9,7 @@ type SortablePlaceCardProps = {
   index: number;
   isActive?: boolean;
   onSelect?: () => void;
+  dayId?: string;
 };
 
 export function SortablePlaceCard({
@@ -16,6 +17,7 @@ export function SortablePlaceCard({
   index,
   isActive,
   onSelect,
+  dayId,
 }: SortablePlaceCardProps) {
   const {
     attributes,
@@ -41,6 +43,7 @@ export function SortablePlaceCard({
         isActive={isActive}
         onSelect={onSelect}
         dragHandleProps={{ ...attributes, ...listeners }}
+        dayId={dayId}
       />
     </div>
   );

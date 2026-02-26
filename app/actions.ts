@@ -1,9 +1,11 @@
 "use server";
 
 import { parseItinerary } from "@/lib/parse-itinerary";
-import { enrichItinerary } from "@/lib/enrich-places";
+import { enrichItinerary, geocodeNominatim, getPlaceImageWikipedia } from "@/lib/enrich-places";
 import { saveTrip } from "@/lib/save-trip";
 import { getSupabase } from "@/lib/supabase";
+import { getRecommendations, type Recommendation } from "@/lib/recommendations";
+import { generatePlaceDetails } from "@/lib/place-details";
 import { revalidatePath } from "next/cache";
 
 export type EnrichAndSaveResult =
@@ -175,5 +177,118 @@ export async function extendTrip(
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to extend trip." };
+  }
+}
+
+export type SuggestResult =
+  | { ok: true; recommendations: Recommendation[] }
+  | { ok: false; error: string };
+
+export async function suggestAlternatives(
+  dayId: string,
+  placeId: string
+): Promise<SuggestResult> {
+  try {
+    const supabase = getSupabase();
+
+    const { data: day, error: dayError } = await supabase
+      .from("days")
+      .select("place, theme, summary")
+      .eq("id", dayId)
+      .single();
+    if (dayError || !day) return { ok: false, error: "Day not found." };
+
+    const { data: places, error: placesError } = await supabase
+      .from("places")
+      .select("id, name, episode")
+      .eq("day_id", dayId)
+      .order("sort_order");
+    if (placesError) return { ok: false, error: placesError.message };
+
+    const target = places?.find((p) => p.id === placeId);
+    if (!target) return { ok: false, error: "Place not found." };
+
+    const otherStops = (places ?? []).filter((p) => p.id !== placeId).map((p) => p.name);
+    const context = [day.theme, day.summary, `Time of day: ${target.episode}`].filter(Boolean).join(". ");
+
+    const recs = await getRecommendations(day.place, otherStops, target.name, context);
+    if (recs.length === 0) {
+      return { ok: false, error: "No alternatives found. Try again." };
+    }
+    return { ok: true, recommendations: recs };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to get suggestions." };
+  }
+}
+
+export type ReplaceResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function replacePlace(
+  placeId: string,
+  dayId: string,
+  newName: string,
+  newCategory: string
+): Promise<ReplaceResult> {
+  try {
+    const supabase = getSupabase();
+
+    const { data: day } = await supabase
+      .from("days")
+      .select("place")
+      .eq("id", dayId)
+      .single();
+    const city = day?.place ?? "";
+
+    const { data: oldPlace } = await supabase
+      .from("places")
+      .select("episode, sort_order")
+      .eq("id", placeId)
+      .single();
+    if (!oldPlace) return { ok: false, error: "Original place not found." };
+
+    const [lat, lng] = await geocodeNominatim(`${newName} ${city}`);
+    const imageUrl = await getPlaceImageWikipedia(newName, city, lat ?? undefined, lng ?? undefined);
+
+    let descriptionLong = "A notable stop on your journey.";
+    let durationMinutes = 60;
+    let addressShort = "";
+    try {
+      const details = await generatePlaceDetails([{ name: newName, city }]);
+      if (details[0]) {
+        descriptionLong = details[0].descriptionLong;
+        newCategory = details[0].category || newCategory;
+        durationMinutes = details[0].durationMinutes;
+        addressShort = details[0].addressShort;
+      }
+    } catch {
+      // Non-fatal
+    }
+
+    const { error: updateError } = await supabase
+      .from("places")
+      .update({
+        name: newName,
+        lat,
+        lng,
+        image_url: imageUrl,
+        description_long: descriptionLong,
+        category: newCategory,
+        duration_minutes: durationMinutes,
+        address_short: addressShort,
+        details: null,
+        google_maps_url: lat && lng
+          ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+          : null,
+      })
+      .eq("id", placeId);
+
+    if (updateError) return { ok: false, error: updateError.message };
+
+    revalidatePath("/trips");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to replace place." };
   }
 }
