@@ -162,7 +162,7 @@ function MonthGrid({
         {WEEKDAYS.map((wd) => (
           <div
             key={wd}
-            className="text-center text-[10px] sm:text-xs font-medium text-muted-foreground py-1"
+            className="text-center text-xs font-medium text-muted-foreground py-1"
           >
             {wd}
           </div>
@@ -222,7 +222,7 @@ function MonthGrid({
               <div className="relative z-10 flex flex-col h-full p-1 sm:p-1.5">
                 <div className="flex items-center justify-between gap-0.5">
                   <span
-                    className="text-[10px] sm:text-xs font-bold leading-none"
+                    className="text-xs font-bold leading-none"
                     style={{ color: cityColor.text }}
                   >
                     {format(date, "d")}
@@ -237,12 +237,12 @@ function MonthGrid({
                 <div className="mt-auto space-y-0.5 min-w-0">
                   <div className="flex items-center gap-0.5 min-w-0">
                     {isCityChange && (
-                      <span className="text-[8px] leading-none shrink-0">
+                      <span className="text-[11px] leading-none shrink-0">
                         ✈️
                       </span>
                     )}
                     <span
-                      className="text-[8px] sm:text-[10px] font-semibold truncate leading-tight"
+                      className="text-[10px] sm:text-xs font-semibold truncate leading-tight"
                       style={{ color: cityColor.text }}
                     >
                       {tripDay.place}
@@ -250,7 +250,7 @@ function MonthGrid({
                   </div>
                   {stopCount > 0 && (
                     <span
-                      className="inline-flex items-center rounded-full px-1 py-px text-[7px] sm:text-[8px] font-bold leading-none text-white"
+                      className="inline-flex items-center rounded-full px-1.5 py-px text-[10px] sm:text-[11px] font-bold leading-none text-white"
                       style={{ backgroundColor: cityColor.accent }}
                     >
                       {stopCount}

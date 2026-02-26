@@ -10,6 +10,13 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,23 +88,23 @@ export function ExtendTripDialog({ tripId, days }: ExtendTripDialogProps) {
 
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="insert-after">Insert after</Label>
-            <select
-              id="insert-after"
-              value={selectedDate}
-              onChange={(e) => handleSelectChange(e.target.value)}
-              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-            >
-              {days.map((day, i) => {
-                const dateObj = new Date(day.date + "T00:00:00");
-                return (
-                  <option key={day.id} value={day.date}>
-                    After Day {i + 1}: {day.place},{" "}
-                    {format(dateObj, "MMM d")}
-                  </option>
-                );
-              })}
-            </select>
+            <Label>Insert after</Label>
+            <Select value={selectedDate} onValueChange={handleSelectChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a day" />
+              </SelectTrigger>
+              <SelectContent>
+                {days.map((day, i) => {
+                  const dateObj = new Date(day.date + "T00:00:00");
+                  return (
+                    <SelectItem key={day.id} value={day.date}>
+                      After Day {i + 1}: {day.place},{" "}
+                      {format(dateObj, "MMM d")}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

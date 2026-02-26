@@ -16,16 +16,21 @@ export async function saveTrip(
     const startDate = dates[0] ?? null;
     const endDate = dates[dates.length - 1] ?? null;
 
+    const skipCategories = new Set(["transport", "accommodation"]);
     let coverImageUrl: string | null = null;
+    let fallbackImageUrl: string | null = null;
     for (const day of enriched.days) {
       for (const place of day.places) {
-        if (place.imageUrl) {
+        if (!place.imageUrl) continue;
+        if (!fallbackImageUrl) fallbackImageUrl = place.imageUrl;
+        if (!skipCategories.has((place.category ?? "").toLowerCase())) {
           coverImageUrl = place.imageUrl;
           break;
         }
       }
       if (coverImageUrl) break;
     }
+    if (!coverImageUrl) coverImageUrl = fallbackImageUrl;
 
     const { data: trip, error: tripError } = await supabase
       .from("trips")

@@ -51,17 +51,17 @@ export function DaySelector({
             ref={isActive ? activeRef : undefined}
             onClick={() => onDaySelect(day.id)}
             className={cn(
-              "snap-center shrink-0 flex flex-col items-center justify-center w-[60px] rounded-lg px-2 py-2 transition-colors duration-200",
+              "snap-center shrink-0 flex flex-col items-center justify-center w-[72px] rounded-lg px-2 py-2 transition-colors duration-200",
               isActive
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted/60 text-muted-foreground hover:bg-muted"
             )}
           >
-            <span className="text-[10px] font-semibold uppercase tracking-wide">
+            <span className="text-[11px] font-semibold uppercase tracking-wide">
               Day {day.dayNumber}
             </span>
             <span className="text-xs font-medium">{dateLabel}</span>
-            <span className="mt-0.5 max-w-full truncate text-[9px]">
+            <span className="mt-0.5 max-w-full truncate text-[11px]">
               {day.place}
             </span>
           </button>

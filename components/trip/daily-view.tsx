@@ -163,31 +163,36 @@ function DayContent({
           strategy={verticalListSortingStrategy}
         >
           <div className="space-y-6">
-            {episodeOrder.map((ep) => {
-              const places = optimisticPlaces.filter((p) => p.episode === ep);
-              if (places.length === 0) return null;
-              return (
-                <section key={ep} className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <ClockIcon className="size-3.5 text-muted-foreground" />
-                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                      {ep}
-                    </h3>
-                  </div>
-                  <div className="space-y-3">
-                    {places.map((place, i) => (
-                      <SortablePlaceCard
-                        key={place.id}
-                        place={place}
-                        index={i}
-                        isActive={activePlace === place.id}
-                        onSelect={() => onPlaceSelect(place.id)}
-                      />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
+            {(() => {
+              let globalIndex = 0;
+              return episodeOrder.map((ep) => {
+                const places = optimisticPlaces.filter((p) => p.episode === ep);
+                if (places.length === 0) return null;
+                const startIndex = globalIndex;
+                globalIndex += places.length;
+                return (
+                  <section key={ep} className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <ClockIcon className="size-3.5 text-muted-foreground" />
+                      <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                        {ep}
+                      </h3>
+                    </div>
+                    <div className="space-y-3">
+                      {places.map((place, i) => (
+                        <SortablePlaceCard
+                          key={place.id}
+                          place={place}
+                          index={startIndex + i}
+                          isActive={activePlace === place.id}
+                          onSelect={() => onPlaceSelect(place.id)}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                );
+              });
+            })()}
           </div>
         </SortableContext>
       </DndContext>

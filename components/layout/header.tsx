@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MapPinIcon, PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV_ITEMS = [
   { href: "/trips", label: "Trips" },
@@ -41,7 +42,8 @@ export function Header() {
               </Link>
             );
           })}
-          <Button size="sm" asChild className="ml-2">
+          <ThemeToggle />
+          <Button size="sm" asChild className="ml-1">
             <Link href="/">
               <PlusIcon className="size-4 mr-1" />
               New Trip

@@ -73,15 +73,19 @@ export function PlaceCard({
       }}
       className={cn(
         "group relative flex gap-3 rounded-xl border bg-card p-3 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 cursor-pointer",
+        dragHandleProps && "pl-8",
         isActive && "ring-2 ring-primary"
       )}
     >
-      <div
-        {...dragHandleProps}
-        className="absolute top-1/2 -left-1 -translate-y-1/2 flex items-center justify-center rounded-md p-1 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
-      >
-        <GripVerticalIcon className="size-4" />
-      </div>
+      {dragHandleProps && (
+        <div
+          {...dragHandleProps}
+          title="Drag to reorder"
+          className="absolute top-1/2 left-1 -translate-y-1/2 flex items-center justify-center rounded-md p-1 opacity-30 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
+        >
+          <GripVerticalIcon className="size-4" />
+        </div>
+      )}
 
       <div className="relative shrink-0 w-28 aspect-[4/3] rounded-lg overflow-hidden bg-muted">
         {place.image_url ? (

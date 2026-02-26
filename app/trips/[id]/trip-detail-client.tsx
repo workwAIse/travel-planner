@@ -5,6 +5,7 @@ import { ViewSwitcher } from "@/components/trip/view-switcher";
 import { DailyView } from "@/components/trip/daily-view";
 import { CalendarView } from "@/components/trip/calendar-view";
 import { TimelineView } from "@/components/trip/timeline-view";
+import { TripStats } from "@/components/trip/trip-stats";
 import { ExtendTripDialog } from "@/components/trip/extend-trip-dialog";
 import type { TripWithDaysAndPlaces } from "@/lib/db-types";
 
@@ -37,7 +38,14 @@ export function TripDetailClient({ trip }: Props) {
         />
       </div>
 
-      {activeView === "daily" && <DailyView days={trip.days} />}
+      {activeView === "daily" && (
+        <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+          <DailyView days={trip.days} />
+          <aside className="hidden lg:block lg:sticky lg:top-20 lg:self-start">
+            <TripStats trip={trip} />
+          </aside>
+        </div>
+      )}
 
       {activeView === "calendar" && (
         <CalendarView
