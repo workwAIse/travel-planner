@@ -118,6 +118,8 @@ describe("buildImportedRecommendations", () => {
     });
 
     expect(recommendations.map((rec) => rec.name)).toEqual(["Louvre Museum", "NYC Pizza"]);
-    expect(recommendations[0].reason).toMatch(/Google Maps|Instagram/);
+    expect(recommendations[0].reason).toMatch(/Paris/);
+    expect(recommendations[0].sourceLabel).toBe("Google Maps");
+    expect(recommendations[0].sourceCollection).toBe("Paris musts");
   });
 });

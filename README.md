@@ -5,7 +5,7 @@ An interactive, Airbnb-grade travel planner that turns raw itinerary text into a
 ## Features
 
 - **Smart parsing** -- Paste raw itinerary text and AI extracts structured days, places, and episodes
-- **Saved places import** -- Paste Google Maps lists or Instagram saved-folder exports and auto-load them into trip stop suggestions (with automatic metadata fallback if the new table is not migrated yet)
+- **Saved places import** -- Paste Google Maps lists or Instagram saved-folder exports and auto-load them into trip stop suggestions with place-focused detail text plus source labels (with automatic metadata fallback if the new table is not migrated yet)
 - **Auto-enrichment** -- Geocoding, Wikipedia images, weather forecasts, AI-generated place descriptions
 - **Daily view** -- Day-by-day itinerary with place cards, episode sections, and interactive Leaflet map
 - **Calendar view** -- Month-grid overview with city color coding, weather icons, and stop counts

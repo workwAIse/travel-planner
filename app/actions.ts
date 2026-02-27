@@ -641,6 +641,18 @@ export type ImportSavedPlacesResult =
   }
   | { ok: false; error: string };
 
+type SavedPlaceImportRow = {
+  trip_id: string;
+  source: SavedPlaceSource;
+  collection_name: string | null;
+  place_name: string;
+  city_hint: string | null;
+  category_hint: "sight" | "food" | "nightlife" | "activity";
+  google_maps_url: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
 export async function importSavedPlacesForTrip(
   tripId: string,
   source: SavedPlaceSource,
@@ -680,23 +692,25 @@ export async function importSavedPlacesForTrip(
         existingKeys.add(key);
         return true;
       })
-      .map((item) => ({
+      .map((item): SavedPlaceImportRow => ({
         trip_id: tripId,
         source: item.source,
         collection_name: normalizedCollectionName,
         place_name: item.placeName,
         city_hint: item.cityHint,
-        category_hint: item.categoryHint,
+        category_hint: normalizeSuggestionCategory(item.categoryHint),
         google_maps_url: item.googleMapsUrl,
         notes: item.notes,
         created_at: timestamp,
       }));
 
-    if (toInsertRows.length > 0) {
+    const enrichedInsertRows = await enrichSavedPlaceRowsWithDetails(toInsertRows);
+
+    if (enrichedInsertRows.length > 0) {
       if (existingLoad.storage === "table") {
         const { error: insertError } = await supabase
           .from("trip_saved_places")
-          .insert(toInsertRows.map((row) => ({
+          .insert(enrichedInsertRows.map((row) => ({
             trip_id: row.trip_id,
             source: row.source,
             collection_name: row.collection_name,
@@ -714,7 +728,7 @@ export async function importSavedPlacesForTrip(
           const fallbackPersist = await persistTripSavedPlacesInRawInput(
             supabase,
             tripId,
-            [...existingLoad.rows, ...toInsertRows]
+            [...existingLoad.rows, ...enrichedInsertRows]
           );
           if (!fallbackPersist.ok) return { ok: false, error: fallbackPersist.error };
           parsed.warnings.push(
@@ -725,7 +739,7 @@ export async function importSavedPlacesForTrip(
         const fallbackPersist = await persistTripSavedPlacesInRawInput(
           supabase,
           tripId,
-          [...existingLoad.rows, ...toInsertRows]
+          [...existingLoad.rows, ...enrichedInsertRows]
         );
         if (!fallbackPersist.ok) return { ok: false, error: fallbackPersist.error };
       }
@@ -737,8 +751,8 @@ export async function importSavedPlacesForTrip(
     return {
       ok: true,
       parsed: parsed.items.length,
-      imported: toInsertRows.length,
-      duplicates: parsed.items.length - toInsertRows.length,
+      imported: enrichedInsertRows.length,
+      duplicates: parsed.items.length - enrichedInsertRows.length,
       aiItems: parsed.aiItems,
       warnings: [
         ...parsed.warnings,
@@ -800,12 +814,56 @@ function mergeRecommendations(
   return merged;
 }
 
-function normalizeSuggestionCategory(category: string): string {
+function normalizeSuggestionCategory(category: string): "sight" | "food" | "nightlife" | "activity" {
   const normalized = normalizeSavedPlaceText(category);
   if (normalized.includes("food")) return "food";
   if (normalized.includes("night")) return "nightlife";
   if (normalized.includes("activity")) return "activity";
   return "sight";
+}
+
+async function enrichSavedPlaceRowsWithDetails(
+  rows: SavedPlaceImportRow[]
+): Promise<SavedPlaceImportRow[]> {
+  if (rows.length === 0) return rows;
+
+  const missingNotes = rows
+    .map((row, index) => ({ row, index }))
+    .filter((entry) => !entry.row.notes)
+    .slice(0, 24);
+
+  if (missingNotes.length === 0) return rows;
+
+  try {
+    const details = await generatePlaceDetails(
+      missingNotes.map((entry) => ({
+        name: entry.row.place_name,
+        city: entry.row.city_hint ?? "",
+      }))
+    );
+
+    const detailsByIndex = new Map<number, (typeof details)[number]>();
+    missingNotes.forEach((entry, i) => {
+      if (details[i]) detailsByIndex.set(entry.index, details[i]);
+    });
+
+    return rows.map((row, index) => {
+      const detail = detailsByIndex.get(index);
+      if (!detail) return row;
+
+      const detailedCategory = normalizeSuggestionCategory(detail.category);
+      return {
+        ...row,
+        notes: row.notes ?? detail.descriptionLong ?? null,
+        category_hint:
+          row.category_hint === "sight" && detailedCategory !== "sight"
+            ? detailedCategory
+            : row.category_hint,
+      };
+    });
+  } catch {
+    return rows;
+  }
 }
 
 async function loadTripSavedPlaceRows(

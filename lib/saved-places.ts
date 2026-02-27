@@ -21,6 +21,7 @@ export type SavedPlaceSuggestionRow = {
   category_hint: string | null;
   source: SavedPlaceSource;
   collection_name: string | null;
+  notes?: string | null;
 };
 
 export type ParseSavedPlacesResult = {
@@ -229,18 +230,19 @@ export function buildImportedRecommendations(
 
     const sourceLabel = row.source === "google_maps" ? "Google Maps" : "Instagram";
     const collectionName = sanitizeFreeText(row.collection_name ?? "");
-    const reason = [
-      `Saved from ${sourceLabel}`,
-      collectionName ? `list "${collectionName}"` : null,
-      cityHint ? `for ${cityHint}` : null,
-    ]
-      .filter(Boolean)
-      .join(" - ");
+    const reason = buildImportedDetailReason({
+      notes: row.notes ?? null,
+      category,
+      cityHint,
+      city: options.city,
+    });
 
     const recommendation: Recommendation = {
       name: placeName,
       category,
-      reason: `${reason}.`,
+      reason,
+      sourceLabel,
+      sourceCollection: collectionName,
     };
 
     const existing = deduped.get(normalizedPlace);
@@ -648,4 +650,29 @@ function episodeCategoryBias(episode: string, category: SavedPlaceCategory): num
   const idx = preference.indexOf(category);
   if (idx === -1) return 0;
   return (preference.length - idx) * 5;
+}
+
+function buildImportedDetailReason(input: {
+  notes: string | null;
+  category: SavedPlaceCategory;
+  cityHint: string | null;
+  city: string;
+}): string {
+  const notes = sanitizeFreeText(input.notes ?? "");
+  if (notes) {
+    const trimmed = notes.endsWith(".") ? notes : `${notes}.`;
+    return trimmed;
+  }
+
+  const city = sanitizeFreeText(input.cityHint ?? input.city) ?? "this destination";
+  if (input.category === "food") {
+    return `A saved food spot in ${city}, ideal for local flavors and a relaxed break.`;
+  }
+  if (input.category === "nightlife") {
+    return `A saved evening hangout in ${city} with lively atmosphere and after-dark energy.`;
+  }
+  if (input.category === "activity") {
+    return `A saved activity in ${city} that adds a hands-on experience to your day.`;
+  }
+  return `A saved highlight in ${city} worth adding to your itinerary.`;
 }
