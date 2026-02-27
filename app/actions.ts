@@ -135,6 +135,66 @@ export async function updateTrip(
   }
 }
 
+export async function regeocodeTrip(
+  tripId: string
+): Promise<{ ok: true; fixed: number; total: number } | { ok: false; error: string }> {
+  try {
+    const supabase = getSupabase();
+
+    const { data: days } = await supabase
+      .from("days")
+      .select("id, place")
+      .eq("trip_id", tripId);
+    if (!days || days.length === 0) return { ok: true, fixed: 0, total: 0 };
+
+    const dayMap = new Map(days.map((d) => [d.id, d.place]));
+    const dayIds = days.map((d) => d.id);
+
+    const { data: places } = await supabase
+      .from("places")
+      .select("id, name, day_id, lat, lng, image_url")
+      .in("day_id", dayIds);
+    if (!places) return { ok: true, fixed: 0, total: 0 };
+
+    const missing = places.filter((p) => p.lat == null || p.lng == null);
+    if (missing.length === 0) return { ok: true, fixed: 0, total: 0 };
+
+    let fixed = 0;
+    for (const place of missing) {
+      const city = dayMap.get(place.day_id) ?? "";
+      const query = `${place.name} ${city}`.trim();
+
+      const [lat, lng] = await geocodeNominatim(query);
+      if (lat == null || lng == null) continue;
+
+      const updates: Record<string, unknown> = {
+        lat,
+        lng,
+        google_maps_url: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+      };
+
+      if (!place.image_url) {
+        const img = await getPlaceImageWikipedia(place.name, city, lat, lng);
+        if (img) updates.image_url = img;
+      }
+
+      const { error } = await supabase
+        .from("places")
+        .update(updates)
+        .eq("id", place.id);
+
+      if (!error) fixed++;
+
+      await new Promise((r) => setTimeout(r, 1100));
+    }
+
+    revalidatePath("/trips");
+    return { ok: true, fixed, total: missing.length };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to re-geocode." };
+  }
+}
+
 export async function reorderPlaces(
   dayId: string,
   placeIds: string[]

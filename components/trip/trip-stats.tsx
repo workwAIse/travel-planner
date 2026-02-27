@@ -1,4 +1,18 @@
-import { MapPinIcon, CalendarIcon, NavigationIcon, SunIcon } from "lucide-react";
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import {
+  MapPinIcon,
+  CalendarIcon,
+  NavigationIcon,
+  SunIcon,
+  MapPinOffIcon,
+  Loader2Icon,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { regeocodeTrip } from "@/app/actions";
 import type { TripWithDaysAndPlaces } from "@/lib/db-types";
 
 type TripStatsProps = {
@@ -6,6 +20,7 @@ type TripStatsProps = {
 };
 
 export function TripStats({ trip }: TripStatsProps) {
+  const router = useRouter();
   const totalPlaces = trip.days.reduce((sum, d) => sum + d.places.length, 0);
   const cities = [...new Set(trip.days.map((d) => d.place))];
   const totalDuration = trip.days.reduce(
@@ -16,10 +31,35 @@ export function TripStats({ trip }: TripStatsProps) {
   const hours = Math.floor(totalDuration / 60);
   const minutes = totalDuration % 60;
 
+  const missingCoords = trip.days.reduce(
+    (sum, d) => sum + d.places.filter((p) => p.lat == null || p.lng == null).length,
+    0
+  );
+
   const cityBreakdown = cities.map((city) => {
     const count = trip.days.filter((d) => d.place === city).length;
     return { city, count };
   });
+
+  const [isPending, startTransition] = useTransition();
+
+  function handleRegeocode() {
+    startTransition(async () => {
+      const result = await regeocodeTrip(trip.id);
+      if (result.ok) {
+        if (result.fixed > 0) {
+          toast.success(`Fixed ${result.fixed} of ${result.total} missing locations`);
+          router.refresh();
+        } else if (result.total === 0) {
+          toast.info("All stops already have map locations");
+        } else {
+          toast.warning(`Could not geocode ${result.total} stops — try editing their names`);
+        }
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
 
   return (
     <div className="rounded-xl border bg-card p-4 space-y-3">
@@ -49,6 +89,30 @@ export function TripStats({ trip }: TripStatsProps) {
           value={hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`}
         />
       </div>
+
+      {missingCoords > 0 && (
+        <div className="pt-2 border-t">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs"
+            onClick={handleRegeocode}
+            disabled={isPending}
+          >
+            {isPending ? (
+              <>
+                <Loader2Icon className="size-3.5 animate-spin" />
+                Fixing locations…
+              </>
+            ) : (
+              <>
+                <MapPinOffIcon className="size-3.5" />
+                Fix {missingCoords} missing map {missingCoords === 1 ? "pin" : "pins"}
+              </>
+            )}
+          </Button>
+        </div>
+      )}
 
       {cityBreakdown.length > 1 && (
         <div className="space-y-1.5 pt-2 border-t">
