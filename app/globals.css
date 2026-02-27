@@ -46,99 +46,103 @@
   --radius-2xl: 28px;
   --radius-3xl: 32px;
   --radius-4xl: 36px;
-  --shadow-sm: 0 2px 10px rgba(44,31,24,0.06);
-  --shadow-md: 0 8px 24px rgba(44,31,24,0.10);
-  --shadow-lg: 0 18px 48px rgba(44,31,24,0.14);
+  --shadow-sm: 0 2px 10px rgba(30,42,58,0.06);
+  --shadow-md: 0 8px 24px rgba(30,42,58,0.10);
+  --shadow-lg: 0 18px 48px rgba(30,42,58,0.14);
 }
 
 /* ============================================
-   Premium Lifestyle Travel — Light theme
-   Terracotta + Deep Teal on warm neutrals
+   Option D — Slate Blue & Sand · Light
+   Coastal calm · Nordic minimalism
    ============================================ */
 :root {
   --radius: 14px;
 
-  /* Neutrals */
-  --background: #F7F3EE;
-  --foreground: #2C1F18;
-  --card: #FFFFFF;
-  --card-foreground: #2C1F18;
-  --popover: #FFFFFF;
-  --popover-foreground: #2C1F18;
+  /* Neutrals — cool frost/silver */
+  --background: #f0f2f5;
+  --foreground: #1e2a3a;
+  --card: #ffffff;
+  --card-foreground: #1e2a3a;
+  --popover: #ffffff;
+  --popover-foreground: #1e2a3a;
 
-  /* Brand accents */
-  --primary: #C65D3B;
-  --primary-foreground: #FFFFFF;
-  --secondary: #FBF8F4;
-  --secondary-foreground: #2C1F18;
-  --muted: #FBF8F4;
-  --muted-foreground: #7A6F66;
-  --accent: #F2E4DF;
-  --accent-foreground: #2C1F18;
+  /* Brand — slate blue + sand */
+  --primary: #4a6fa5;
+  --primary-foreground: #ffffff;
+  --secondary: #f7f9fc;
+  --secondary-foreground: #1e2a3a;
+  --muted: #f7f9fc;
+  --muted-foreground: #6b7a8d;
+  --accent: #e8eff8;
+  --accent-foreground: #1e2a3a;
 
   /* Semantic */
-  --destructive: #D64545;
-  --border: #E7DED5;
-  --input: #E7DED5;
-  --ring: #1F5F61;
+  --destructive: #d64545;
+  --border: #dae2ed;
+  --input: #dae2ed;
+  --ring: #d4a96a;
 
   /* Chart palette */
-  --chart-1: #C65D3B;
-  --chart-2: #1F5F61;
-  --chart-3: #2FB171;
-  --chart-4: #D9A441;
-  --chart-5: #2D6CDF;
+  --chart-1: #4a6fa5;
+  --chart-2: #d4a96a;
+  --chart-3: #2fb171;
+  --chart-4: #8b5cf6;
+  --chart-5: #e07a57;
 
   /* Sidebar */
-  --sidebar: #FBF8F4;
-  --sidebar-foreground: #2C1F18;
-  --sidebar-primary: #C65D3B;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F2E4DF;
-  --sidebar-accent-foreground: #2C1F18;
-  --sidebar-border: #E7DED5;
-  --sidebar-ring: #1F5F61;
+  --sidebar: #f7f9fc;
+  --sidebar-foreground: #1e2a3a;
+  --sidebar-primary: #4a6fa5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8eff8;
+  --sidebar-accent-foreground: #1e2a3a;
+  --sidebar-border: #dae2ed;
+  --sidebar-ring: #d4a96a;
 }
 
 /* ============================================
-   Dark theme — candlelit espresso bar
+   Option D — Dark · Deep ocean night
    ============================================ */
 .dark {
-  --background: #120B07;
-  --foreground: #FAF6F1;
-  --card: #1A120E;
-  --card-foreground: #FAF6F1;
-  --popover: #221812;
-  --popover-foreground: #FAF6F1;
+  --background: #101820;
+  --foreground: #eef2f7;
+  --card: #171f2b;
+  --card-foreground: #eef2f7;
+  --popover: #1f2d3d;
+  --popover-foreground: #eef2f7;
 
-  --primary: #E07A57;
-  --primary-foreground: #FAF6F1;
-  --secondary: #221812;
-  --secondary-foreground: #FAF6F1;
-  --muted: #1A120E;
-  --muted-foreground: rgba(250,246,241,0.60);
-  --accent: rgba(224,122,87,0.14);
-  --accent-foreground: #FAF6F1;
+  --primary: #6b92c4;
+  --primary-foreground: #eef2f7;
+  --secondary: #171f2b;
+  --secondary-foreground: #eef2f7;
+  --muted: #171f2b;
+  --muted-foreground: rgba(238,242,247,0.60);
+  --accent: rgba(107,146,196,0.14);
+  --accent-foreground: #eef2f7;
 
-  --destructive: #FF5A5A;
+  --destructive: #ff5a5a;
   --border: rgba(255,255,255,0.10);
   --input: rgba(255,255,255,0.12);
-  --ring: #5AA6A8;
+  --ring: #e8c48a;
 
-  --chart-1: #E07A57;
-  --chart-2: #5AA6A8;
-  --chart-3: #36C07B;
-  --chart-4: #E3B24A;
-  --chart-5: #6CA8FF;
+  --chart-1: #6b92c4;
+  --chart-2: #e8c48a;
+  --chart-3: #36c07b;
+  --chart-4: #a78bfa;
+  --chart-5: #e07a57;
 
-  --sidebar: #1A120E;
-  --sidebar-foreground: #FAF6F1;
-  --sidebar-primary: #E07A57;
-  --sidebar-primary-foreground: #FAF6F1;
-  --sidebar-accent: rgba(224,122,87,0.14);
-  --sidebar-accent-foreground: #FAF6F1;
+  --sidebar: #171f2b;
+  --sidebar-foreground: #eef2f7;
+  --sidebar-primary: #6b92c4;
+  --sidebar-primary-foreground: #eef2f7;
+  --sidebar-accent: rgba(107,146,196,0.14);
+  --sidebar-accent-foreground: #eef2f7;
   --sidebar-border: rgba(255,255,255,0.10);
-  --sidebar-ring: #5AA6A8;
+  --sidebar-ring: #e8c48a;
+
+  --shadow-sm: 0 2px 10px rgba(0,0,0,0.45);
+  --shadow-md: 0 10px 28px rgba(0,0,0,0.55);
+  --shadow-lg: 0 18px 56px rgba(0,0,0,0.65);
 }
 
 @layer base {

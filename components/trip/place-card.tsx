@@ -44,12 +44,12 @@ type PlaceCardProps = {
 };
 
 const categoryColors: Record<string, string> = {
-  sight: "bg-[#fdefd6] text-[#92560a] dark:bg-[#3a2a0a] dark:text-[#f0c060]",
-  food: "bg-[#fde8e8] text-[#8b2020] dark:bg-[#3a0a0a] dark:text-[#f08080]",
-  activity: "bg-[#d6f0ee] text-[#1a5f60] dark:bg-[#0a2a2b] dark:text-[#5aa6a8]",
-  nightlife: "bg-[#e8d6f5] text-[#5a1f8b] dark:bg-[#200a3a] dark:text-[#c090f0]",
-  transport: "bg-[#d6e4f5] text-[#1a3f6f] dark:bg-[#0a1a2a] dark:text-[#80b0f0]",
-  accommodation: "bg-[#e8f5d6] text-[#2a5f1a] dark:bg-[#0a2a0a] dark:text-[#80c060]",
+  sight: "bg-[#fdf0d6] text-[#8a5c0a] dark:bg-[#2a1e08] dark:text-[#e8c48a]",
+  food: "bg-[#fde8e8] text-[#8b2020] dark:bg-[#2a0808] dark:text-[#f08080]",
+  activity: "bg-[#dce8f5] text-[#1e3f6f] dark:bg-[#0a1628] dark:text-[#6b92c4]",
+  nightlife: "bg-[#e8d8f5] text-[#4a1a80] dark:bg-[#1a0830] dark:text-[#c090f0]",
+  transport: "bg-[#d8e8f5] text-[#1e3a5f] dark:bg-[#081420] dark:text-[#80b0f0]",
+  accommodation: "bg-[#d8f0e8] text-[#1a5f3a] dark:bg-[#082018] dark:text-[#80c060]",
 };
 
 function descriptionText(place: PlaceCardData): string | null {

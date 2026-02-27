@@ -41,7 +41,7 @@ export function TripHero({
       <div
         className="absolute inset-0"
         style={{
-          background: "linear-gradient(to top, rgba(18,11,7,0.85) 0%, rgba(18,11,7,0.20) 60%, rgba(18,11,7,0) 100%)",
+          background: "linear-gradient(to top, rgba(16,24,32,0.85) 0%, rgba(16,24,32,0.20) 60%, rgba(16,24,32,0) 100%)",
         }}
       />
       <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
@@ -54,17 +54,17 @@ export function TripHero({
           </h1>
           <div className="mt-2 sm:mt-3 flex flex-wrap gap-2 sm:gap-3">
             {dateRange && (
-              <span className="inline-flex items-center gap-1.5 rounded-[10px] bg-[rgba(18,11,7,0.5)] border border-white/10 backdrop-blur-md px-2.5 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm text-white">
+              <span className="inline-flex items-center gap-1.5 rounded-[10px] bg-[rgba(16,24,32,0.5)] border border-white/10 backdrop-blur-md px-2.5 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm text-white">
                 <CalendarIcon className="size-3 sm:size-3.5" />
                 {dateRange}
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 rounded-[10px] bg-[rgba(18,11,7,0.5)] border border-white/10 backdrop-blur-md px-2.5 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm text-white">
+            <span className="inline-flex items-center gap-1.5 rounded-[10px] bg-[rgba(16,24,32,0.5)] border border-white/10 backdrop-blur-md px-2.5 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm text-white">
               <MapPinIcon className="size-3 sm:size-3.5" />
               {totalDays} days · {totalStops} stops
             </span>
             {cities.length > 1 && (
-              <span className="inline-flex items-center gap-1.5 rounded-[10px] bg-[rgba(18,11,7,0.5)] border border-white/10 backdrop-blur-md px-2.5 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm text-white">
+              <span className="inline-flex items-center gap-1.5 rounded-[10px] bg-[rgba(16,24,32,0.5)] border border-white/10 backdrop-blur-md px-2.5 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm text-white">
                 {routeLabel}
               </span>
             )}

@@ -26,9 +26,9 @@ export type DayMapProps = {
 };
 
 const EPISODE_COLORS: Record<string, string> = {
-  Morning: "#1F5F61",
-  Afternoon: "#C65D3B",
-  Evening: "#7c3aed",
+  Morning: "#d4a96a",
+  Afternoon: "#4a6fa5",
+  Evening: "#6b7a8d",
 };
 
 function getColor(episode: string): string {

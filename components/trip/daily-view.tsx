@@ -21,9 +21,9 @@ import { SunIcon, SunsetIcon, MoonStarIcon, MapIcon, XIcon } from "lucide-react"
 import { DaySelector } from "./day-selector";
 
 const EPISODE_ICONS: Record<string, { icon: typeof SunIcon; color: string }> = {
-  Morning: { icon: SunIcon, color: "text-amber-500" },
+  Morning: { icon: SunIcon, color: "text-[#d4a96a] dark:text-[#e8c48a]" },
   Afternoon: { icon: SunsetIcon, color: "text-primary" },
-  Evening: { icon: MoonStarIcon, color: "text-[#1f5f61] dark:text-[#5aa6a8]" },
+  Evening: { icon: MoonStarIcon, color: "text-[#4a6fa5] dark:text-[#6b92c4]" },
 };
 
 function EpisodeHeader({ episode }: { episode: string }) {
