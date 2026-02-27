@@ -126,15 +126,32 @@ export function parseSavedPlacesInput(rawInput: string, source: SavedPlaceSource
 
 export function mergeSavedPlaceCandidates(items: SavedPlaceCandidate[]): SavedPlaceCandidate[] {
   const byKey = new Map<string, SavedPlaceCandidate>();
+  const keysByName = new Map<string, string[]>();
 
   for (const item of items) {
     const cleaned = sanitizeCandidate(item);
     if (!cleaned) continue;
-    const key = buildSavedPlaceKey(cleaned.placeName, cleaned.cityHint);
+
+    const nameKey = normalizeSavedPlaceText(cleaned.placeName);
+    const incomingCityKey = normalizeSavedPlaceText(cleaned.cityHint ?? "");
+    const candidateKeys = keysByName.get(nameKey) ?? [];
+
+    const matchedKey = candidateKeys.find((candidateKey) => {
+      const existingCandidate = byKey.get(candidateKey);
+      if (!existingCandidate) return false;
+      const existingCityKey = normalizeSavedPlaceText(existingCandidate.cityHint ?? "");
+      if (!existingCityKey || !incomingCityKey) return true;
+      return existingCityKey === incomingCityKey;
+    });
+
+    const key = matchedKey ?? buildSavedPlaceKey(cleaned.placeName, cleaned.cityHint);
     const existing = byKey.get(key);
 
     if (!existing) {
       byKey.set(key, cleaned);
+      const next = keysByName.get(nameKey) ?? [];
+      next.push(key);
+      keysByName.set(nameKey, next);
       continue;
     }
 
