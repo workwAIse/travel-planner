@@ -97,8 +97,10 @@ function extractFromHtml(input: {
 
 function extractRelevantLinks(html: string, source: SavedPlaceSource): string[] {
   const matches = [...html.matchAll(/href=["']([^"']+)["']/gi)]
-    .map((m) => decodeHtmlEntities(m[1]))
-    .filter(Boolean);
+    .flatMap((m) => {
+      const decoded = decodeHtmlEntities(m[1]);
+      return decoded ? [decoded] : [];
+    });
 
   const expanded = matches.map((link) => {
     if (link.startsWith("//")) return `https:${link}`;
