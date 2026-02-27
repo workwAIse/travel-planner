@@ -696,7 +696,16 @@ export async function importSavedPlacesForTrip(
       if (existingLoad.storage === "table") {
         const { error: insertError } = await supabase
           .from("trip_saved_places")
-          .insert(toInsertRows.map(({ created_at, ...row }) => row));
+          .insert(toInsertRows.map((row) => ({
+            trip_id: row.trip_id,
+            source: row.source,
+            collection_name: row.collection_name,
+            place_name: row.place_name,
+            city_hint: row.city_hint,
+            category_hint: row.category_hint,
+            google_maps_url: row.google_maps_url,
+            notes: row.notes,
+          })));
         if (insertError) {
           if (!isTripSavedPlacesTableMissingError(insertError)) {
             return { ok: false, error: insertError.message };
