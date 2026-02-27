@@ -1,9 +1,15 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { DownloadIcon, Loader2Icon } from "lucide-react";
+import {
+  ClipboardIcon,
+  DownloadIcon,
+  LinkIcon,
+  Loader2Icon,
+  UploadIcon,
+} from "lucide-react";
 import {
   Dialog,
   DialogClose,
@@ -25,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { importSavedPlacesForTrip } from "@/app/actions";
+import { fetchImportSourceFromUrl, importSavedPlacesForTrip } from "@/app/actions";
 import type { SavedPlaceSource } from "@/lib/saved-places";
 
 const SOURCE_OPTIONS: Array<{ value: SavedPlaceSource; label: string }> = [
@@ -39,6 +45,9 @@ export function ImportSavedPlacesDialog({ tripId }: { tripId: string }) {
   const [source, setSource] = useState<SavedPlaceSource>("google_maps");
   const [collectionName, setCollectionName] = useState("");
   const [rawInput, setRawInput] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [isFetchingUrl, setIsFetchingUrl] = useState(false);
+  const [isPastingClipboard, setIsPastingClipboard] = useState(false);
   const [lastSummary, setLastSummary] = useState<{
     imported: number;
     parsed: number;
@@ -47,6 +56,7 @@ export function ImportSavedPlacesDialog({ tripId }: { tripId: string }) {
     warnings: string[];
   } | null>(null);
   const [isPending, startTransition] = useTransition();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const placeholder = useMemo(() => {
     if (source === "google_maps") {
@@ -112,6 +122,73 @@ export function ImportSavedPlacesDialog({ tripId }: { tripId: string }) {
     });
   }
 
+  async function handleImportFromUrl() {
+    const trimmed = sourceUrl.trim();
+    if (!trimmed) {
+      toast.error("Paste a URL first.");
+      return;
+    }
+
+    setIsFetchingUrl(true);
+    const result = await fetchImportSourceFromUrl(source, trimmed);
+    setIsFetchingUrl(false);
+
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+
+    setRawInput((current) => mergeImportText(current, result.extractedText));
+    setSourceUrl("");
+    toast.success("Imported data from URL. Review and click Analyze and import.");
+    result.warnings.forEach((warning) => toast.message(warning));
+  }
+
+  async function handleImportFromClipboard() {
+    if (!navigator.clipboard?.readText) {
+      toast.error("Clipboard access is not supported in this browser.");
+      return;
+    }
+
+    setIsPastingClipboard(true);
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        toast.error("Clipboard is empty.");
+        return;
+      }
+      setRawInput((current) => mergeImportText(current, text));
+      toast.success("Clipboard content added.");
+    } catch {
+      toast.error("Clipboard read failed. Allow clipboard permission and try again.");
+    } finally {
+      setIsPastingClipboard(false);
+    }
+  }
+
+  async function handleImportFromFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      if (file.size > 3 * 1024 * 1024) {
+        toast.error("File is too large. Use files under 3MB.");
+        return;
+      }
+      const text = await file.text();
+      if (!text.trim()) {
+        toast.error("File is empty.");
+        return;
+      }
+      setRawInput((current) => mergeImportText(current, text));
+      toast.success(`Loaded ${file.name}.`);
+    } catch {
+      toast.error("Failed to read file.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
   return (
     <Dialog
       open={open}
@@ -166,6 +243,73 @@ export function ImportSavedPlacesDialog({ tripId }: { tripId: string }) {
                 disabled={isPending}
               />
             </div>
+          </div>
+
+          <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Quick import helpers
+            </p>
+
+            <div className="flex gap-2">
+              <Input
+                value={sourceUrl}
+                onChange={(event) => setSourceUrl(event.target.value)}
+                placeholder="Paste public list/share URL and fetch"
+                disabled={isPending || isFetchingUrl || isPastingClipboard}
+              />
+              <Button
+                variant="outline"
+                onClick={handleImportFromUrl}
+                disabled={isPending || isFetchingUrl || !sourceUrl.trim()}
+              >
+                {isFetchingUrl ? (
+                  <>
+                    <Loader2Icon className="animate-spin" />
+                    Fetching...
+                  </>
+                ) : (
+                  <>
+                    <LinkIcon />
+                    Fetch URL
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={handleImportFromClipboard}
+                disabled={isPending || isFetchingUrl || isPastingClipboard}
+              >
+                {isPastingClipboard ? (
+                  <>
+                    <Loader2Icon className="animate-spin" />
+                    Reading...
+                  </>
+                ) : (
+                  <>
+                    <ClipboardIcon />
+                    Use clipboard
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isPending || isFetchingUrl || isPastingClipboard}
+              >
+                <UploadIcon />
+                Upload file
+              </Button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,.txt,.csv,.html,.htm"
+              className="hidden"
+              onChange={handleImportFromFile}
+            />
           </div>
 
           <div className="space-y-2">
@@ -225,4 +369,12 @@ export function ImportSavedPlacesDialog({ tripId }: { tripId: string }) {
       </DialogContent>
     </Dialog>
   );
+}
+
+function mergeImportText(current: string, incoming: string): string {
+  const left = current.trim();
+  const right = incoming.trim();
+  if (!left) return right;
+  if (!right) return left;
+  return `${left}\n\n${right}`;
 }

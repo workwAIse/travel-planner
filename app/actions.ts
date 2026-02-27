@@ -16,6 +16,7 @@ import {
   type SavedPlaceSuggestionRow,
 } from "@/lib/saved-places";
 import { smartParseSavedPlaces } from "@/lib/smart-parse-saved-places";
+import { extractImportTextFromFetchedContent } from "@/lib/import-source";
 import {
   parseTripRawInputSavedPlaces,
   serializeTripRawInputSavedPlaces,
@@ -652,6 +653,88 @@ type SavedPlaceImportRow = {
   notes: string | null;
   created_at: string;
 };
+
+export type FetchImportFromUrlResult =
+  | {
+    ok: true;
+    extractedText: string;
+    warnings: string[];
+  }
+  | { ok: false; error: string };
+
+export async function fetchImportSourceFromUrl(
+  source: SavedPlaceSource,
+  url: string
+): Promise<FetchImportFromUrlResult> {
+  try {
+    if (!SAVED_PLACE_SOURCES.includes(source)) {
+      return { ok: false, error: "Select a valid source first." };
+    }
+
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl) {
+      return { ok: false, error: "Paste a URL first." };
+    }
+
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(trimmedUrl);
+    } catch {
+      return { ok: false, error: "URL is invalid." };
+    }
+
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      return { ok: false, error: "Only http(s) URLs are supported." };
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    let response: Response;
+    try {
+      response = await fetch(parsedUrl.toString(), {
+        method: "GET",
+        headers: {
+          "User-Agent": "TravelPlannerImporter/1.0",
+          Accept: "text/html,application/json,text/plain,*/*",
+        },
+        redirect: "follow",
+        signal: controller.signal,
+        cache: "no-store",
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!response.ok) {
+      return { ok: false, error: `Failed to fetch URL (${response.status}).` };
+    }
+
+    const contentType = response.headers.get("content-type");
+    const body = await response.text();
+    const extracted = extractImportTextFromFetchedContent({
+      source,
+      contentType,
+      body,
+      url: parsedUrl.toString(),
+    });
+
+    if (!extracted.text.trim()) {
+      return {
+        ok: false,
+        error: "Could not extract useful place data from this URL. Try clipboard or export JSON.",
+      };
+    }
+
+    return {
+      ok: true,
+      extractedText: extracted.text,
+      warnings: extracted.warnings,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to fetch URL.";
+    return { ok: false, error: message };
+  }
+}
 
 export async function importSavedPlacesForTrip(
   tripId: string,
