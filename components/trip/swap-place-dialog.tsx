@@ -107,7 +107,7 @@ export function SwapPlaceDialog({
         </DialogHeader>
 
         <p className="text-sm text-muted-foreground">
-          AI-suggested alternatives based on your itinerary. Pick one to fully
+          Saved and AI alternatives based on your itinerary. Pick one to fully
           replace this stop with geocoded location, photo, and description.
         </p>
 

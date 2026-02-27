@@ -133,7 +133,7 @@ export function AddStopDialog({ dayId, episode, city }: AddStopDialogProps) {
         <div className="relative">
           <div className="absolute inset-x-0 top-1/2 border-t" />
           <p className="relative bg-background px-2 text-xs text-muted-foreground text-center w-fit mx-auto">
-            or pick an AI suggestion
+            or pick a saved or AI suggestion
           </p>
         </div>
 
@@ -141,7 +141,7 @@ export function AddStopDialog({ dayId, episode, city }: AddStopDialogProps) {
           {loading && (
             <div className="flex flex-col items-center justify-center py-6 gap-2 text-muted-foreground">
               <Loader2Icon className="size-5 animate-spin text-primary" />
-              <span className="text-sm">Finding great stops…</span>
+              <span className="text-sm">Loading saved and AI picks…</span>
             </div>
           )}
 

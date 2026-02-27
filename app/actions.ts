@@ -7,6 +7,15 @@ import { getSupabase } from "@/lib/supabase";
 import { getRecommendations, type Recommendation } from "@/lib/recommendations";
 import { generatePlaceDetails } from "@/lib/place-details";
 import { regenerateDaySummary } from "@/lib/regenerate-summary";
+import {
+  SAVED_PLACE_SOURCES,
+  buildImportedRecommendations,
+  buildSavedPlaceKey,
+  normalizeSavedPlaceText,
+  type SavedPlaceSource,
+  type SavedPlaceSuggestionRow,
+} from "@/lib/saved-places";
+import { smartParseSavedPlaces } from "@/lib/smart-parse-saved-places";
 import { revalidatePath } from "next/cache";
 
 export type EnrichAndSaveResult =
@@ -343,7 +352,7 @@ export async function suggestAlternatives(
 
     const { data: day, error: dayError } = await supabase
       .from("days")
-      .select("place, theme, summary")
+      .select("trip_id, place, theme, summary")
       .eq("id", dayId)
       .single();
     if (dayError || !day) return { ok: false, error: "Day not found." };
@@ -358,10 +367,23 @@ export async function suggestAlternatives(
     const target = places?.find((p) => p.id === placeId);
     if (!target) return { ok: false, error: "Place not found." };
 
+    const currentStops = (places ?? []).map((p) => p.name);
     const otherStops = (places ?? []).filter((p) => p.id !== placeId).map((p) => p.name);
     const context = [day.theme, day.summary, `Time of day: ${target.episode}`].filter(Boolean).join(". ");
 
-    const recs = await getRecommendations(day.place, otherStops, target.name, context);
+    const [savedRecommendations, aiRecommendations] = await Promise.all([
+      getImportedRecommendationsForDay({
+        supabase,
+        tripId: day.trip_id,
+        city: day.place,
+        episode: target.episode,
+        currentStops,
+        limit: 6,
+      }),
+      getRecommendations(day.place, otherStops, target.name, context),
+    ]);
+
+    const recs = mergeRecommendations(savedRecommendations, aiRecommendations, 8);
     if (recs.length === 0) {
       return { ok: false, error: "No alternatives found. Try again." };
     }
@@ -491,7 +513,7 @@ export async function suggestNewStops(
 
     const { data: day, error: dayError } = await supabase
       .from("days")
-      .select("place, theme, summary")
+      .select("trip_id, place, theme, summary")
       .eq("id", dayId)
       .single();
     if (dayError || !day) return { ok: false, error: "Day not found." };
@@ -510,7 +532,19 @@ export async function suggestNewStops(
       `Looking for ${episode.toLowerCase()} activities`,
     ].filter(Boolean).join(". ");
 
-    const recs = await getRecommendations(day.place, currentStops, null, context);
+    const [savedRecommendations, aiRecommendations] = await Promise.all([
+      getImportedRecommendationsForDay({
+        supabase,
+        tripId: day.trip_id,
+        city: day.place,
+        episode,
+        currentStops,
+        limit: 8,
+      }),
+      getRecommendations(day.place, currentStops, null, context),
+    ]);
+
+    const recs = mergeRecommendations(savedRecommendations, aiRecommendations, 10);
     if (recs.length === 0) {
       return { ok: false, error: "No suggestions found. Try again." };
     }
@@ -589,4 +623,152 @@ export async function addStop(
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to add stop." };
   }
+}
+
+export type ImportSavedPlacesResult =
+  | {
+    ok: true;
+    parsed: number;
+    imported: number;
+    duplicates: number;
+    aiItems: number;
+    warnings: string[];
+  }
+  | { ok: false; error: string };
+
+export async function importSavedPlacesForTrip(
+  tripId: string,
+  source: SavedPlaceSource,
+  collectionName: string,
+  rawInput: string
+): Promise<ImportSavedPlacesResult> {
+  try {
+    if (!tripId.trim()) {
+      return { ok: false, error: "Trip id is required." };
+    }
+    if (!SAVED_PLACE_SOURCES.includes(source)) {
+      return { ok: false, error: "Select a valid source." };
+    }
+    if (!rawInput.trim()) {
+      return { ok: false, error: "Paste your Google Maps or Instagram data first." };
+    }
+
+    const supabase = getSupabase();
+    const parsed = await smartParseSavedPlaces(rawInput, source);
+    if (parsed.items.length === 0) {
+      return { ok: false, error: "No places found. Paste a list, URLs, or exported JSON." };
+    }
+
+    const { data: existingRows, error: existingError } = await supabase
+      .from("trip_saved_places")
+      .select("place_name, city_hint")
+      .eq("trip_id", tripId);
+    if (existingError) return { ok: false, error: existingError.message };
+
+    const existingKeys = new Set(
+      (existingRows ?? []).map((row) => buildSavedPlaceKey(row.place_name, row.city_hint))
+    );
+
+    const normalizedCollectionName = collectionName.trim() || null;
+    const toInsert = parsed.items
+      .filter((item) => {
+        const key = buildSavedPlaceKey(item.placeName, item.cityHint);
+        if (existingKeys.has(key)) return false;
+        existingKeys.add(key);
+        return true;
+      })
+      .map((item) => ({
+        trip_id: tripId,
+        source: item.source,
+        collection_name: normalizedCollectionName,
+        place_name: item.placeName,
+        city_hint: item.cityHint,
+        category_hint: item.categoryHint,
+        google_maps_url: item.googleMapsUrl,
+        notes: item.notes,
+      }));
+
+    if (toInsert.length > 0) {
+      const { error: insertError } = await supabase
+        .from("trip_saved_places")
+        .insert(toInsert);
+      if (insertError) return { ok: false, error: insertError.message };
+    }
+
+    revalidatePath("/trips");
+    revalidatePath(`/trips/${tripId}`);
+
+    return {
+      ok: true,
+      parsed: parsed.items.length,
+      imported: toInsert.length,
+      duplicates: parsed.items.length - toInsert.length,
+      aiItems: parsed.aiItems,
+      warnings: parsed.warnings,
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to import saved places." };
+  }
+}
+
+async function getImportedRecommendationsForDay({
+  supabase,
+  tripId,
+  city,
+  episode,
+  currentStops,
+  limit,
+}: {
+  supabase: ReturnType<typeof getSupabase>;
+  tripId: string;
+  city: string;
+  episode: string;
+  currentStops: string[];
+  limit: number;
+}): Promise<Recommendation[]> {
+  const { data, error } = await supabase
+    .from("trip_saved_places")
+    .select("place_name, city_hint, category_hint, source, collection_name")
+    .eq("trip_id", tripId)
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  if (error || !data) return [];
+
+  return buildImportedRecommendations(data as SavedPlaceSuggestionRow[], {
+    currentStops,
+    city,
+    episode,
+    limit,
+  });
+}
+
+function mergeRecommendations(
+  primary: Recommendation[],
+  secondary: Recommendation[],
+  limit = 10
+): Recommendation[] {
+  const merged: Recommendation[] = [];
+  const seen = new Set<string>();
+
+  for (const rec of [...primary, ...secondary]) {
+    const key = normalizeSavedPlaceText(rec.name);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    merged.push({
+      ...rec,
+      category: normalizeSuggestionCategory(rec.category),
+    });
+    if (merged.length >= limit) break;
+  }
+
+  return merged;
+}
+
+function normalizeSuggestionCategory(category: string): string {
+  const normalized = normalizeSavedPlaceText(category);
+  if (normalized.includes("food")) return "food";
+  if (normalized.includes("night")) return "nightlife";
+  if (normalized.includes("activity")) return "activity";
+  return "sight";
 }

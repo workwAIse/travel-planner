@@ -43,6 +43,19 @@ export type Place = {
   user_notes: string | null;
 };
 
+export type TripSavedPlace = {
+  id: string;
+  trip_id: string;
+  source: "google_maps" | "instagram";
+  collection_name: string | null;
+  place_name: string;
+  city_hint: string | null;
+  category_hint: string | null;
+  google_maps_url: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
 export type TripWithDaysAndPlaces = Trip & {
   days: (Day & { places: Place[] })[];
 };
