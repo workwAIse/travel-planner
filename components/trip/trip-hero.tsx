@@ -37,28 +37,34 @@ export function TripHero({
       ) : (
         <div className="size-full bg-gradient-to-br from-primary/20 to-accent/10" />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+      {/* Strong gradient scrim for text legibility */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "linear-gradient(to top, rgba(18,11,7,0.85) 0%, rgba(18,11,7,0.20) 60%, rgba(18,11,7,0) 100%)",
+        }}
+      />
       <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
         <div className="mx-auto max-w-[1200px] px-2">
           <div className="[&_a]:text-white/70 [&_a:hover]:text-white [&_span]:text-white/70 [&_svg]:text-white/50">
             <Breadcrumb items={breadcrumbItems} />
           </div>
-          <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl text-white mt-1.5 sm:mt-2 tracking-tight">
+          <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl text-white mt-1.5 sm:mt-2 tracking-tight italic">
             {name}
           </h1>
           <div className="mt-2 sm:mt-3 flex flex-wrap gap-2 sm:gap-3">
             {dateRange && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur-sm px-2.5 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm text-white">
+              <span className="inline-flex items-center gap-1.5 rounded-[10px] bg-[rgba(18,11,7,0.5)] border border-white/10 backdrop-blur-md px-2.5 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm text-white">
                 <CalendarIcon className="size-3 sm:size-3.5" />
                 {dateRange}
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur-sm px-2.5 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm text-white">
+            <span className="inline-flex items-center gap-1.5 rounded-[10px] bg-[rgba(18,11,7,0.5)] border border-white/10 backdrop-blur-md px-2.5 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm text-white">
               <MapPinIcon className="size-3 sm:size-3.5" />
               {totalDays} days · {totalStops} stops
             </span>
             {cities.length > 1 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur-sm px-2.5 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm text-white">
+              <span className="inline-flex items-center gap-1.5 rounded-[10px] bg-[rgba(18,11,7,0.5)] border border-white/10 backdrop-blur-md px-2.5 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm text-white">
                 {routeLabel}
               </span>
             )}

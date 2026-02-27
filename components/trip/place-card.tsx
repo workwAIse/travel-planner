@@ -44,16 +44,12 @@ type PlaceCardProps = {
 };
 
 const categoryColors: Record<string, string> = {
-  sight: "bg-[#1F5F61]/10 text-[#1F5F61] dark:bg-[#5AA6A8]/15 dark:text-[#5AA6A8]",
-  food: "bg-[#C65D3B]/10 text-[#C65D3B] dark:bg-[#E07A57]/15 dark:text-[#E07A57]",
-  nightlife:
-    "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
-  transport:
-    "bg-[#E7DED5] text-[#7A6F66] dark:bg-[rgba(255,255,255,0.08)] dark:text-[rgba(250,246,241,0.60)]",
-  accommodation:
-    "bg-[#2FB171]/10 text-[#2FB171] dark:bg-[#36C07B]/15 dark:text-[#36C07B]",
-  activity:
-    "bg-[#D9A441]/12 text-[#8B6914] dark:bg-[#E3B24A]/15 dark:text-[#E3B24A]",
+  sight: "bg-[#fdefd6] text-[#92560a] dark:bg-[#3a2a0a] dark:text-[#f0c060]",
+  food: "bg-[#fde8e8] text-[#8b2020] dark:bg-[#3a0a0a] dark:text-[#f08080]",
+  activity: "bg-[#d6f0ee] text-[#1a5f60] dark:bg-[#0a2a2b] dark:text-[#5aa6a8]",
+  nightlife: "bg-[#e8d6f5] text-[#5a1f8b] dark:bg-[#200a3a] dark:text-[#c090f0]",
+  transport: "bg-[#d6e4f5] text-[#1a3f6f] dark:bg-[#0a1a2a] dark:text-[#80b0f0]",
+  accommodation: "bg-[#e8f5d6] text-[#2a5f1a] dark:bg-[#0a2a0a] dark:text-[#80c060]",
 };
 
 function descriptionText(place: PlaceCardData): string | null {
@@ -143,7 +139,7 @@ export function PlaceCard({
             <MapPinIcon className="size-6" />
           </div>
         )}
-        <span className="absolute top-1.5 left-1.5 flex size-5 items-center justify-center rounded-full bg-foreground/70 text-[10px] font-bold text-background">
+        <span className="absolute top-1.5 left-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
           {index + 1}
         </span>
       </div>
@@ -156,7 +152,7 @@ export function PlaceCard({
           {place.category && (
             <span
               className={cn(
-                "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium",
+                "shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium tracking-wide",
                 catColor
               )}
             >

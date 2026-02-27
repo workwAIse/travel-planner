@@ -17,8 +17,31 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { toast } from "sonner";
-import { ClockIcon, MapIcon, XIcon } from "lucide-react";
+import { SunIcon, SunsetIcon, MoonStarIcon, MapIcon, XIcon } from "lucide-react";
 import { DaySelector } from "./day-selector";
+
+const EPISODE_ICONS: Record<string, { icon: typeof SunIcon; color: string }> = {
+  Morning: { icon: SunIcon, color: "text-amber-500" },
+  Afternoon: { icon: SunsetIcon, color: "text-primary" },
+  Evening: { icon: MoonStarIcon, color: "text-[#1f5f61] dark:text-[#5aa6a8]" },
+};
+
+function EpisodeHeader({ episode }: { episode: string }) {
+  const config = EPISODE_ICONS[episode] ?? { icon: SunIcon, color: "text-muted-foreground" };
+  const Icon = config.icon;
+  return (
+    <div className="flex items-center gap-3">
+      <div className="h-px flex-1 bg-border" />
+      <div className="flex items-center gap-1.5">
+        <Icon className={`size-3.5 ${config.color}`} />
+        <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.08em]">
+          {episode}
+        </h3>
+      </div>
+      <div className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
 import { SortablePlaceCard } from "./sortable-place-card";
 import { AddStopDialog } from "./add-stop-dialog";
 import { TripStats } from "./trip-stats";
@@ -239,12 +262,7 @@ function DayContent({
                 if (places.length === 0) {
                   return (
                     <section key={ep} className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <ClockIcon className="size-3.5 text-muted-foreground" />
-                        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                          {ep}
-                        </h3>
-                      </div>
+                      <EpisodeHeader episode={ep} />
                       <AddStopDialog dayId={day.id} episode={ep} city={day.place} />
                     </section>
                   );
@@ -252,12 +270,7 @@ function DayContent({
                 globalIndex += places.length;
                 return (
                   <section key={ep} className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <ClockIcon className="size-3.5 text-muted-foreground" />
-                      <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                        {ep}
-                      </h3>
-                    </div>
+                    <EpisodeHeader episode={ep} />
                     <div className="space-y-3">
                       {places.map((place, i) => (
                         <SortablePlaceCard

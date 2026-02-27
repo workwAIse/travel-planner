@@ -139,7 +139,7 @@ export function EnrichForm() {
                   onClick={handleTryExample}
                   className="text-xs text-primary hover:underline font-medium"
                 >
-                  Try an example
+                  See a sample trip →
                 </button>
               )}
             </div>

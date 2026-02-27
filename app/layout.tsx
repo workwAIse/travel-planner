@@ -1,28 +1,25 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, DM_Serif_Display } from "next/font/google";
+import { DM_Sans, DM_Serif_Display } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { Header } from "@/components/layout/header";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 const dmSerif = DM_Serif_Display({
   variable: "--font-dm-serif",
   weight: "400",
+  style: ["normal", "italic"],
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Travel Planner",
+  title: "Roam",
   description: "Turn your notes into a trip you can see — with places, photos, maps, and weather.",
 };
 
@@ -34,22 +31,25 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${dmSerif.variable} antialiased flex flex-col min-h-screen`}
+        className={`${dmSans.variable} ${dmSerif.variable} antialiased flex flex-col min-h-screen`}
       >
         <ThemeProvider>
           <Header />
           <div className="flex-1">{children}</div>
-          <footer className="text-center text-xs text-muted-foreground py-3 border-t">
-            Geocoding ©{" "}
-            <a
-              href="https://www.openstreetmap.org/copyright"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-foreground transition-colors"
-            >
-              OpenStreetMap
-            </a>{" "}
-            contributors · Place images from Wikipedia
+          <footer className="text-center text-xs text-muted-foreground py-4 border-t space-y-1">
+            <p className="font-medium">Made for explorers. © {new Date().getFullYear()} Roam.</p>
+            <p>
+              Geocoding ©{" "}
+              <a
+                href="https://www.openstreetmap.org/copyright"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground transition-colors"
+              >
+                OpenStreetMap
+              </a>{" "}
+              · Images from Wikipedia
+            </p>
           </footer>
           <Toaster />
         </ThemeProvider>
