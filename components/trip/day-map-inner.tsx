@@ -109,8 +109,7 @@ export function DayMapInner({
         .filter(
           (p): p is typeof p & { lat: number; lng: number } =>
             p.lat != null && p.lng != null,
-        )
-        .sort((a, b) => a.sort_order - b.sort_order),
+        ),
     [places],
   );
 
@@ -147,12 +146,12 @@ export function DayMapInner({
 
         <AutoFitBounds positions={positions} placeIds={placeIds} />
 
-        {validPlaces.map((place, idx) => (
+        {validPlaces.map((place) => (
           <Marker
-            key={`${place.id}-${idx}`}
+            key={`${place.id}-${place.sort_order}`}
             position={[place.lat, place.lng]}
             icon={createNumberedIcon(
-              idx + 1,
+              place.sort_order + 1,
               getColor(place.episode),
               place.id === activePlace,
             )}

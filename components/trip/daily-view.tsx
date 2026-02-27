@@ -47,7 +47,21 @@ export function DailyView({ trip }: DailyViewProps) {
   if (!activeDay) return null;
 
   const dayIndex = days.findIndex((d) => d.id === activeDay.id);
-  const placesForMap = (mapPlaces ?? activeDay.places).map((p, i) => ({
+
+  const episodeOrder = Array.isArray(activeDay.episode_order)
+    ? (activeDay.episode_order as string[])
+    : ["Morning", "Afternoon", "Evening"];
+
+  const sortedPlacesForMap = (mapPlaces ?? activeDay.places)
+    .slice()
+    .sort((a, b) => {
+      const epA = episodeOrder.indexOf(a.episode);
+      const epB = episodeOrder.indexOf(b.episode);
+      if (epA !== epB) return epA - epB;
+      return a.sort_order - b.sort_order;
+    });
+
+  const placesForMap = sortedPlacesForMap.map((p, i) => ({
     id: p.id,
     name: p.name,
     lat: p.lat,
