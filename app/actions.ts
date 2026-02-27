@@ -7,6 +7,21 @@ import { getSupabase } from "@/lib/supabase";
 import { getRecommendations, type Recommendation } from "@/lib/recommendations";
 import { generatePlaceDetails } from "@/lib/place-details";
 import { regenerateDaySummary } from "@/lib/regenerate-summary";
+import {
+  SAVED_PLACE_SOURCES,
+  buildImportedRecommendations,
+  buildSavedPlaceKey,
+  normalizeSavedPlaceText,
+  type SavedPlaceSource,
+  type SavedPlaceSuggestionRow,
+} from "@/lib/saved-places";
+import { smartParseSavedPlaces } from "@/lib/smart-parse-saved-places";
+import { extractImportTextFromFetchedContent } from "@/lib/import-source";
+import {
+  parseTripRawInputSavedPlaces,
+  serializeTripRawInputSavedPlaces,
+  type EmbeddedSavedPlaceRow,
+} from "@/lib/saved-places-fallback";
 import { revalidatePath } from "next/cache";
 
 export type EnrichAndSaveResult =
@@ -343,7 +358,7 @@ export async function suggestAlternatives(
 
     const { data: day, error: dayError } = await supabase
       .from("days")
-      .select("place, theme, summary")
+      .select("trip_id, place, theme, summary")
       .eq("id", dayId)
       .single();
     if (dayError || !day) return { ok: false, error: "Day not found." };
@@ -358,10 +373,23 @@ export async function suggestAlternatives(
     const target = places?.find((p) => p.id === placeId);
     if (!target) return { ok: false, error: "Place not found." };
 
+    const currentStops = (places ?? []).map((p) => p.name);
     const otherStops = (places ?? []).filter((p) => p.id !== placeId).map((p) => p.name);
     const context = [day.theme, day.summary, `Time of day: ${target.episode}`].filter(Boolean).join(". ");
 
-    const recs = await getRecommendations(day.place, otherStops, target.name, context);
+    const [savedRecommendations, aiRecommendations] = await Promise.all([
+      getImportedRecommendationsForDay({
+        supabase,
+        tripId: day.trip_id,
+        city: day.place,
+        episode: target.episode,
+        currentStops,
+        limit: 6,
+      }),
+      getRecommendations(day.place, otherStops, target.name, context),
+    ]);
+
+    const recs = mergeRecommendations(savedRecommendations, aiRecommendations, 8);
     if (recs.length === 0) {
       return { ok: false, error: "No alternatives found. Try again." };
     }
@@ -491,7 +519,7 @@ export async function suggestNewStops(
 
     const { data: day, error: dayError } = await supabase
       .from("days")
-      .select("place, theme, summary")
+      .select("trip_id, place, theme, summary")
       .eq("id", dayId)
       .single();
     if (dayError || !day) return { ok: false, error: "Day not found." };
@@ -510,7 +538,19 @@ export async function suggestNewStops(
       `Looking for ${episode.toLowerCase()} activities`,
     ].filter(Boolean).join(". ");
 
-    const recs = await getRecommendations(day.place, currentStops, null, context);
+    const [savedRecommendations, aiRecommendations] = await Promise.all([
+      getImportedRecommendationsForDay({
+        supabase,
+        tripId: day.trip_id,
+        city: day.place,
+        episode,
+        currentStops,
+        limit: 8,
+      }),
+      getRecommendations(day.place, currentStops, null, context),
+    ]);
+
+    const recs = mergeRecommendations(savedRecommendations, aiRecommendations, 10);
     if (recs.length === 0) {
       return { ok: false, error: "No suggestions found. Try again." };
     }
@@ -589,4 +629,397 @@ export async function addStop(
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to add stop." };
   }
+}
+
+export type ImportSavedPlacesResult =
+  | {
+    ok: true;
+    parsed: number;
+    imported: number;
+    duplicates: number;
+    aiItems: number;
+    warnings: string[];
+  }
+  | { ok: false; error: string };
+
+type SavedPlaceImportRow = {
+  trip_id: string;
+  source: SavedPlaceSource;
+  collection_name: string | null;
+  place_name: string;
+  city_hint: string | null;
+  category_hint: "sight" | "food" | "nightlife" | "activity";
+  google_maps_url: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type FetchImportFromUrlResult =
+  | {
+    ok: true;
+    extractedText: string;
+    warnings: string[];
+  }
+  | { ok: false; error: string };
+
+export async function fetchImportSourceFromUrl(
+  source: SavedPlaceSource,
+  url: string
+): Promise<FetchImportFromUrlResult> {
+  try {
+    if (!SAVED_PLACE_SOURCES.includes(source)) {
+      return { ok: false, error: "Select a valid source first." };
+    }
+
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl) {
+      return { ok: false, error: "Paste a URL first." };
+    }
+
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(trimmedUrl);
+    } catch {
+      return { ok: false, error: "URL is invalid." };
+    }
+
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      return { ok: false, error: "Only http(s) URLs are supported." };
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    let response: Response;
+    try {
+      response = await fetch(parsedUrl.toString(), {
+        method: "GET",
+        headers: {
+          "User-Agent": "TravelPlannerImporter/1.0",
+          Accept: "text/html,application/json,text/plain,*/*",
+        },
+        redirect: "follow",
+        signal: controller.signal,
+        cache: "no-store",
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!response.ok) {
+      return { ok: false, error: `Failed to fetch URL (${response.status}).` };
+    }
+
+    const contentType = response.headers.get("content-type");
+    const body = await response.text();
+    const extracted = extractImportTextFromFetchedContent({
+      source,
+      contentType,
+      body,
+      url: parsedUrl.toString(),
+    });
+
+    if (!extracted.text.trim()) {
+      return {
+        ok: false,
+        error: "Could not extract useful place data from this URL. Try clipboard or export JSON.",
+      };
+    }
+
+    return {
+      ok: true,
+      extractedText: extracted.text,
+      warnings: extracted.warnings,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to fetch URL.";
+    return { ok: false, error: message };
+  }
+}
+
+export async function importSavedPlacesForTrip(
+  tripId: string,
+  source: SavedPlaceSource,
+  collectionName: string,
+  rawInput: string
+): Promise<ImportSavedPlacesResult> {
+  try {
+    if (!tripId.trim()) {
+      return { ok: false, error: "Trip id is required." };
+    }
+    if (!SAVED_PLACE_SOURCES.includes(source)) {
+      return { ok: false, error: "Select a valid source." };
+    }
+    if (!rawInput.trim()) {
+      return { ok: false, error: "Paste your Google Maps or Instagram data first." };
+    }
+
+    const supabase = getSupabase();
+    const parsed = await smartParseSavedPlaces(rawInput, source);
+    if (parsed.items.length === 0) {
+      return { ok: false, error: "No places found. Paste a list, URLs, or exported JSON." };
+    }
+
+    const existingLoad = await loadTripSavedPlaceRows(supabase, tripId);
+    if (!existingLoad.ok) return { ok: false, error: existingLoad.error };
+
+    const existingKeys = new Set(
+      existingLoad.rows.map((row) => buildSavedPlaceKey(row.place_name, row.city_hint))
+    );
+
+    const normalizedCollectionName = collectionName.trim() || null;
+    const timestamp = new Date().toISOString();
+    const toInsertRows = parsed.items
+      .filter((item) => {
+        const key = buildSavedPlaceKey(item.placeName, item.cityHint);
+        if (existingKeys.has(key)) return false;
+        existingKeys.add(key);
+        return true;
+      })
+      .map((item): SavedPlaceImportRow => ({
+        trip_id: tripId,
+        source: item.source,
+        collection_name: normalizedCollectionName,
+        place_name: item.placeName,
+        city_hint: item.cityHint,
+        category_hint: normalizeSuggestionCategory(item.categoryHint),
+        google_maps_url: item.googleMapsUrl,
+        notes: item.notes,
+        created_at: timestamp,
+      }));
+
+    const enrichedInsertRows = await enrichSavedPlaceRowsWithDetails(toInsertRows);
+
+    if (enrichedInsertRows.length > 0) {
+      if (existingLoad.storage === "table") {
+        const { error: insertError } = await supabase
+          .from("trip_saved_places")
+          .insert(enrichedInsertRows.map((row) => ({
+            trip_id: row.trip_id,
+            source: row.source,
+            collection_name: row.collection_name,
+            place_name: row.place_name,
+            city_hint: row.city_hint,
+            category_hint: row.category_hint,
+            google_maps_url: row.google_maps_url,
+            notes: row.notes,
+          })));
+        if (insertError) {
+          if (!isTripSavedPlacesTableMissingError(insertError)) {
+            return { ok: false, error: insertError.message };
+          }
+
+          const fallbackPersist = await persistTripSavedPlacesInRawInput(
+            supabase,
+            tripId,
+            [...existingLoad.rows, ...enrichedInsertRows]
+          );
+          if (!fallbackPersist.ok) return { ok: false, error: fallbackPersist.error };
+          parsed.warnings.push(
+            "Saved places table is missing on this Supabase project; used trip metadata fallback storage instead."
+          );
+        }
+      } else {
+        const fallbackPersist = await persistTripSavedPlacesInRawInput(
+          supabase,
+          tripId,
+          [...existingLoad.rows, ...enrichedInsertRows]
+        );
+        if (!fallbackPersist.ok) return { ok: false, error: fallbackPersist.error };
+      }
+    }
+
+    revalidatePath("/trips");
+    revalidatePath(`/trips/${tripId}`);
+
+    return {
+      ok: true,
+      parsed: parsed.items.length,
+      imported: enrichedInsertRows.length,
+      duplicates: parsed.items.length - enrichedInsertRows.length,
+      aiItems: parsed.aiItems,
+      warnings: [
+        ...parsed.warnings,
+        ...(existingLoad.storage === "raw_input"
+          ? ["Saved places table is missing on this Supabase project; using trip metadata fallback storage."]
+          : []),
+      ],
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to import saved places." };
+  }
+}
+
+async function getImportedRecommendationsForDay({
+  supabase,
+  tripId,
+  city,
+  episode,
+  currentStops,
+  limit,
+}: {
+  supabase: ReturnType<typeof getSupabase>;
+  tripId: string;
+  city: string;
+  episode: string;
+  currentStops: string[];
+  limit: number;
+}): Promise<Recommendation[]> {
+  const load = await loadTripSavedPlaceRows(supabase, tripId);
+  if (!load.ok || load.rows.length === 0) return [];
+
+  return buildImportedRecommendations(load.rows as SavedPlaceSuggestionRow[], {
+    currentStops,
+    city,
+    episode,
+    limit,
+  });
+}
+
+function mergeRecommendations(
+  primary: Recommendation[],
+  secondary: Recommendation[],
+  limit = 10
+): Recommendation[] {
+  const merged: Recommendation[] = [];
+  const seen = new Set<string>();
+
+  for (const rec of [...primary, ...secondary]) {
+    const key = normalizeSavedPlaceText(rec.name);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    merged.push({
+      ...rec,
+      category: normalizeSuggestionCategory(rec.category),
+    });
+    if (merged.length >= limit) break;
+  }
+
+  return merged;
+}
+
+function normalizeSuggestionCategory(category: string): "sight" | "food" | "nightlife" | "activity" {
+  const normalized = normalizeSavedPlaceText(category);
+  if (normalized.includes("food")) return "food";
+  if (normalized.includes("night")) return "nightlife";
+  if (normalized.includes("activity")) return "activity";
+  return "sight";
+}
+
+async function enrichSavedPlaceRowsWithDetails(
+  rows: SavedPlaceImportRow[]
+): Promise<SavedPlaceImportRow[]> {
+  if (rows.length === 0) return rows;
+
+  const missingNotes = rows
+    .map((row, index) => ({ row, index }))
+    .filter((entry) => !entry.row.notes)
+    .slice(0, 24);
+
+  if (missingNotes.length === 0) return rows;
+
+  try {
+    const details = await generatePlaceDetails(
+      missingNotes.map((entry) => ({
+        name: entry.row.place_name,
+        city: entry.row.city_hint ?? "",
+      }))
+    );
+
+    const detailsByIndex = new Map<number, (typeof details)[number]>();
+    missingNotes.forEach((entry, i) => {
+      if (details[i]) detailsByIndex.set(entry.index, details[i]);
+    });
+
+    return rows.map((row, index) => {
+      const detail = detailsByIndex.get(index);
+      if (!detail) return row;
+
+      const detailedCategory = normalizeSuggestionCategory(detail.category);
+      return {
+        ...row,
+        notes: row.notes ?? detail.descriptionLong ?? null,
+        category_hint:
+          row.category_hint === "sight" && detailedCategory !== "sight"
+            ? detailedCategory
+            : row.category_hint,
+      };
+    });
+  } catch {
+    return rows;
+  }
+}
+
+async function loadTripSavedPlaceRows(
+  supabase: ReturnType<typeof getSupabase>,
+  tripId: string
+): Promise<
+  | { ok: true; storage: "table" | "raw_input"; rows: EmbeddedSavedPlaceRow[] }
+  | { ok: false; error: string }
+> {
+  const { data, error } = await supabase
+    .from("trip_saved_places")
+    .select("place_name, city_hint, category_hint, source, collection_name, google_maps_url, notes, created_at")
+    .eq("trip_id", tripId)
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  if (!error && data) {
+    return {
+      ok: true,
+      storage: "table",
+      rows: data as EmbeddedSavedPlaceRow[],
+    };
+  }
+
+  if (!isTripSavedPlacesTableMissingError(error)) {
+    return { ok: false, error: error?.message ?? "Failed to load saved places." };
+  }
+
+  const { data: trip, error: tripError } = await supabase
+    .from("trips")
+    .select("raw_input")
+    .eq("id", tripId)
+    .single();
+
+  if (tripError) return { ok: false, error: tripError.message };
+
+  const parsed = parseTripRawInputSavedPlaces(trip?.raw_input ?? null);
+  return {
+    ok: true,
+    storage: "raw_input",
+    rows: parsed.rows,
+  };
+}
+
+async function persistTripSavedPlacesInRawInput(
+  supabase: ReturnType<typeof getSupabase>,
+  tripId: string,
+  rows: EmbeddedSavedPlaceRow[]
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data: trip, error: tripError } = await supabase
+    .from("trips")
+    .select("raw_input")
+    .eq("id", tripId)
+    .single();
+
+  if (tripError) return { ok: false, error: tripError.message };
+
+  const parsed = parseTripRawInputSavedPlaces(trip?.raw_input ?? null);
+  const payload = serializeTripRawInputSavedPlaces(parsed.baseRawInput, rows);
+
+  const { error: updateError } = await supabase
+    .from("trips")
+    .update({ raw_input: payload })
+    .eq("id", tripId);
+
+  if (updateError) return { ok: false, error: updateError.message };
+  return { ok: true };
+}
+
+function isTripSavedPlacesTableMissingError(error: { message?: string } | null | undefined): boolean {
+  const message = (error?.message ?? "").toLowerCase();
+  return (
+    message.includes("trip_saved_places") &&
+    (message.includes("schema cache") || message.includes("does not exist"))
+  );
 }

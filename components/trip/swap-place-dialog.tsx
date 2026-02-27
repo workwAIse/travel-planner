@@ -107,7 +107,7 @@ export function SwapPlaceDialog({
         </DialogHeader>
 
         <p className="text-sm text-muted-foreground">
-          AI-suggested alternatives based on your itinerary. Pick one to fully
+          Saved and AI alternatives based on your itinerary. Pick one to fully
           replace this stop with geocoded location, photo, and description.
         </p>
 
@@ -131,6 +131,11 @@ export function SwapPlaceDialog({
               const catColor =
                 categoryColors[rec.category.toLowerCase()] ??
                 categoryColors.sight;
+              const sourceTag = rec.sourceLabel
+                ? rec.sourceCollection
+                  ? `${rec.sourceLabel} · ${rec.sourceCollection}`
+                  : rec.sourceLabel
+                : null;
 
               return (
                 <div
@@ -145,6 +150,11 @@ export function SwapPlaceDialog({
                       <span className="text-sm font-semibold truncate">
                         {rec.name}
                       </span>
+                      {sourceTag && (
+                        <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground">
+                          {sourceTag}
+                        </span>
+                      )}
                       <span
                         className={cn(
                           "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium capitalize",

@@ -5,6 +5,8 @@ An interactive, Airbnb-grade travel planner that turns raw itinerary text into a
 ## Features
 
 - **Smart parsing** -- Paste raw itinerary text and AI extracts structured days, places, and episodes
+- **Saved places import** -- Paste Google Maps lists or Instagram saved-folder exports and auto-load them into trip stop suggestions with place-focused detail text plus source labels (with automatic metadata fallback if the new table is not migrated yet)
+- **Quick import helpers** -- Pull import payloads from URL, clipboard, or uploaded files before one-click analysis
 - **Auto-enrichment** -- Geocoding, Wikipedia images, weather forecasts, AI-generated place descriptions
 - **Daily view** -- Day-by-day itinerary with place cards, episode sections, and interactive Leaflet map
 - **Calendar view** -- Month-grid overview with city color coding, weather icons, and stop counts
@@ -44,6 +46,7 @@ Copy `.env.local.example` to `.env.local` and set:
 2. In the SQL Editor, run both migration files in order:
    - `supabase/migrations/20260222000000_create_trips_days_places.sql` (base schema)
    - `supabase/migrations/20260225000000_add_weather_descriptions.sql` (weather, descriptions, categories)
+   - `supabase/migrations/20260227000000_add_trip_saved_places.sql` (Google Maps / Instagram saved-place imports)
 
 Or use the Supabase CLI:
 
@@ -67,6 +70,7 @@ Open [http://localhost:3000](http://localhost:3000). Paste an itinerary, name yo
 - **`/trips`** -- Grid of saved trips with cover images
 - **`/trips/[id]`** -- Trip detail with three views:
   - **Daily** -- Day selector, place cards with drag-and-drop, interactive map
+  - **Import saved places** -- Trip-level dialog for Google Maps/Instagram saves that feed into **Add a stop**
   - **Calendar** -- Month grid with city colors, weather, stop counts
   - **Timeline** -- Vertical scroll timeline with city transitions
 
@@ -78,7 +82,7 @@ Open [http://localhost:3000](http://localhost:3000). Paste an itinerary, name yo
 npm test
 ```
 
-30 tests across 3 test files covering schema validation, weather utilities, and action input validation.
+Unit tests cover schema validation, weather utilities, action input validation, and saved-place import parsing.
 
 **E2E tests (Playwright)**
 
@@ -132,6 +136,7 @@ components/
     header.tsx              Sticky nav header
     breadcrumb.tsx          Breadcrumb navigation
   trip/
+    import-saved-places-dialog.tsx Import Google Maps / Instagram saves into trip suggestions
     daily-view.tsx          Day-by-day itinerary with drag-and-drop
     day-map.tsx             Leaflet map (dynamic import, SSR-safe)
     day-selector.tsx        Horizontal day strip
@@ -158,6 +163,10 @@ lib/
   weather-utils.ts         WMO code decoder
   place-details.ts         AI place description generator
   recommendations.ts       AI stop recommendations
+  import-source.ts         URL/content extraction for automated saved-place import
+  saved-places.ts          Saved-place parsing, dedupe, and recommendation scoring
+  saved-places-fallback.ts Raw-input metadata fallback storage for saved places
+  smart-parse-saved-places.ts AI-assisted extraction fallback for external saves
 ```
 
 ## Troubleshooting

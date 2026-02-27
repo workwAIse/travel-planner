@@ -12,6 +12,8 @@ export type Recommendation = {
   name: string;
   reason: string;
   category: string;
+  sourceLabel?: string | null;
+  sourceCollection?: string | null;
 };
 
 export async function getRecommendations(
