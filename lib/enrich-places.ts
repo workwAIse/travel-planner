@@ -27,8 +27,7 @@ export async function enrichItinerary(parsed: ParsedItinerary): Promise<{
       for (const episode of EPISODE_ORDER) {
         const list = day.episodes[episode] ?? [];
         for (const p of list) {
-          const address = p.addressOrDescription || p.name;
-          const [lat, lng] = await geocodeNominatim(address);
+          const [lat, lng] = await smartGeocode(p.name, day.place, p.addressOrDescription);
           await delay(NOMINATIM_DELAY_MS);
           const imageUrl = await getPlaceImageWikipedia(p.name, day.place, lat ?? undefined, lng ?? undefined);
           places.push({
@@ -102,6 +101,76 @@ export async function enrichItinerary(parsed: ParsedItinerary): Promise<{
   } catch (err) {
     return { error: formatFetchError(err, "Enrichment (geocoding or place images)") };
   }
+}
+
+// ─── Multi-strategy geocoding pipeline ────────────────────────────
+
+const NOISE_WORDS = /\b(check[- ]?in|check[- ]?out|arrive|depart|departure|arrival|lunch|dinner|breakfast|street food|walking tour|free day|rest day|explore|visit|stroll|wander)\b/gi;
+const COMBINERS = /\s*[+&]\s*/g;
+
+function cleanPlaceName(name: string): string {
+  return name
+    .replace(COMBINERS, ", ")
+    .replace(NOISE_WORDS, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function generateQueries(name: string, city: string, addressHint?: string | null): string[] {
+  const queries: string[] = [];
+  const cleaned = cleanPlaceName(name);
+
+  // Strategy 1: full name + city
+  queries.push(`${name} ${city}`);
+
+  // Strategy 2: cleaned name + city (if different)
+  if (cleaned !== name && cleaned.length > 2) {
+    queries.push(`${cleaned} ${city}`);
+  }
+
+  // Strategy 3: address hint + city (if available)
+  if (addressHint && addressHint.length > 3) {
+    queries.push(`${addressHint} ${city}`);
+  }
+
+  // Strategy 4: name alone (for famous landmarks)
+  if (name.length > 4) {
+    queries.push(name);
+  }
+
+  // Strategy 5: first meaningful part before comma/+/& 
+  const firstPart = name.split(/[,+&·–—]/)[0].trim();
+  if (firstPart !== name && firstPart.length > 3) {
+    queries.push(`${firstPart} ${city}`);
+  }
+
+  // Strategy 6: city center as last resort
+  queries.push(city);
+
+  // Deduplicate
+  const seen = new Set<string>();
+  return queries.filter((q) => {
+    const key = q.toLowerCase().trim();
+    if (seen.has(key) || key.length < 2) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export async function smartGeocode(
+  name: string,
+  city: string,
+  addressHint?: string | null
+): Promise<[number | null, number | null]> {
+  const queries = generateQueries(name, city, addressHint);
+
+  for (const query of queries) {
+    const [lat, lng] = await geocodeNominatim(query);
+    if (lat != null && lng != null) return [lat, lng];
+    await delay(NOMINATIM_DELAY_MS);
+  }
+
+  return [null, null];
 }
 
 export async function geocodeNominatim(address: string): Promise<[number | null, number | null]> {

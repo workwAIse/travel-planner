@@ -1,7 +1,7 @@
 "use server";
 
 import { parseItinerary } from "@/lib/parse-itinerary";
-import { enrichItinerary, geocodeNominatim, getPlaceImageWikipedia } from "@/lib/enrich-places";
+import { enrichItinerary, smartGeocode, getPlaceImageWikipedia } from "@/lib/enrich-places";
 import { saveTrip } from "@/lib/save-trip";
 import { getSupabase } from "@/lib/supabase";
 import { getRecommendations, type Recommendation } from "@/lib/recommendations";
@@ -162,9 +162,8 @@ export async function regeocodeTrip(
     let fixed = 0;
     for (const place of missing) {
       const city = dayMap.get(place.day_id) ?? "";
-      const query = `${place.name} ${city}`.trim();
 
-      const [lat, lng] = await geocodeNominatim(query);
+      const [lat, lng] = await smartGeocode(place.name, city);
       if (lat == null || lng == null) continue;
 
       const updates: Record<string, unknown> = {
@@ -399,7 +398,7 @@ export async function replacePlace(
       .single();
     if (!oldPlace) return { ok: false, error: "Original place not found." };
 
-    const [lat, lng] = await geocodeNominatim(`${newName} ${city}`);
+    const [lat, lng] = await smartGeocode(newName, city);
     const imageUrl = await getPlaceImageWikipedia(newName, city, lat ?? undefined, lng ?? undefined);
 
     let descriptionLong = "A notable stop on your journey.";
@@ -545,7 +544,7 @@ export async function addStop(
       .limit(1);
     const nextSortOrder = ((existingPlaces?.[0]?.sort_order ?? -1) as number) + 1;
 
-    const [lat, lng] = await geocodeNominatim(`${name} ${city}`);
+    const [lat, lng] = await smartGeocode(name, city);
     const imageUrl = await getPlaceImageWikipedia(name, city, lat ?? undefined, lng ?? undefined);
 
     let descriptionLong = "A notable stop on your journey.";
