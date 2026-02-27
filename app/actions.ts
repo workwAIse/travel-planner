@@ -16,6 +16,11 @@ import {
   type SavedPlaceSuggestionRow,
 } from "@/lib/saved-places";
 import { smartParseSavedPlaces } from "@/lib/smart-parse-saved-places";
+import {
+  parseTripRawInputSavedPlaces,
+  serializeTripRawInputSavedPlaces,
+  type EmbeddedSavedPlaceRow,
+} from "@/lib/saved-places-fallback";
 import { revalidatePath } from "next/cache";
 
 export type EnrichAndSaveResult =
@@ -659,18 +664,16 @@ export async function importSavedPlacesForTrip(
       return { ok: false, error: "No places found. Paste a list, URLs, or exported JSON." };
     }
 
-    const { data: existingRows, error: existingError } = await supabase
-      .from("trip_saved_places")
-      .select("place_name, city_hint")
-      .eq("trip_id", tripId);
-    if (existingError) return { ok: false, error: existingError.message };
+    const existingLoad = await loadTripSavedPlaceRows(supabase, tripId);
+    if (!existingLoad.ok) return { ok: false, error: existingLoad.error };
 
     const existingKeys = new Set(
-      (existingRows ?? []).map((row) => buildSavedPlaceKey(row.place_name, row.city_hint))
+      existingLoad.rows.map((row) => buildSavedPlaceKey(row.place_name, row.city_hint))
     );
 
     const normalizedCollectionName = collectionName.trim() || null;
-    const toInsert = parsed.items
+    const timestamp = new Date().toISOString();
+    const toInsertRows = parsed.items
       .filter((item) => {
         const key = buildSavedPlaceKey(item.placeName, item.cityHint);
         if (existingKeys.has(key)) return false;
@@ -686,13 +689,37 @@ export async function importSavedPlacesForTrip(
         category_hint: item.categoryHint,
         google_maps_url: item.googleMapsUrl,
         notes: item.notes,
+        created_at: timestamp,
       }));
 
-    if (toInsert.length > 0) {
-      const { error: insertError } = await supabase
-        .from("trip_saved_places")
-        .insert(toInsert);
-      if (insertError) return { ok: false, error: insertError.message };
+    if (toInsertRows.length > 0) {
+      if (existingLoad.storage === "table") {
+        const { error: insertError } = await supabase
+          .from("trip_saved_places")
+          .insert(toInsertRows.map(({ created_at, ...row }) => row));
+        if (insertError) {
+          if (!isTripSavedPlacesTableMissingError(insertError)) {
+            return { ok: false, error: insertError.message };
+          }
+
+          const fallbackPersist = await persistTripSavedPlacesInRawInput(
+            supabase,
+            tripId,
+            [...existingLoad.rows, ...toInsertRows]
+          );
+          if (!fallbackPersist.ok) return { ok: false, error: fallbackPersist.error };
+          parsed.warnings.push(
+            "Saved places table is missing on this Supabase project; used trip metadata fallback storage instead."
+          );
+        }
+      } else {
+        const fallbackPersist = await persistTripSavedPlacesInRawInput(
+          supabase,
+          tripId,
+          [...existingLoad.rows, ...toInsertRows]
+        );
+        if (!fallbackPersist.ok) return { ok: false, error: fallbackPersist.error };
+      }
     }
 
     revalidatePath("/trips");
@@ -701,10 +728,15 @@ export async function importSavedPlacesForTrip(
     return {
       ok: true,
       parsed: parsed.items.length,
-      imported: toInsert.length,
-      duplicates: parsed.items.length - toInsert.length,
+      imported: toInsertRows.length,
+      duplicates: parsed.items.length - toInsertRows.length,
       aiItems: parsed.aiItems,
-      warnings: parsed.warnings,
+      warnings: [
+        ...parsed.warnings,
+        ...(existingLoad.storage === "raw_input"
+          ? ["Saved places table is missing on this Supabase project; using trip metadata fallback storage."]
+          : []),
+      ],
     };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to import saved places." };
@@ -726,16 +758,10 @@ async function getImportedRecommendationsForDay({
   currentStops: string[];
   limit: number;
 }): Promise<Recommendation[]> {
-  const { data, error } = await supabase
-    .from("trip_saved_places")
-    .select("place_name, city_hint, category_hint, source, collection_name")
-    .eq("trip_id", tripId)
-    .order("created_at", { ascending: false })
-    .limit(500);
+  const load = await loadTripSavedPlaceRows(supabase, tripId);
+  if (!load.ok || load.rows.length === 0) return [];
 
-  if (error || !data) return [];
-
-  return buildImportedRecommendations(data as SavedPlaceSuggestionRow[], {
+  return buildImportedRecommendations(load.rows as SavedPlaceSuggestionRow[], {
     currentStops,
     city,
     episode,
@@ -771,4 +797,79 @@ function normalizeSuggestionCategory(category: string): string {
   if (normalized.includes("night")) return "nightlife";
   if (normalized.includes("activity")) return "activity";
   return "sight";
+}
+
+async function loadTripSavedPlaceRows(
+  supabase: ReturnType<typeof getSupabase>,
+  tripId: string
+): Promise<
+  | { ok: true; storage: "table" | "raw_input"; rows: EmbeddedSavedPlaceRow[] }
+  | { ok: false; error: string }
+> {
+  const { data, error } = await supabase
+    .from("trip_saved_places")
+    .select("place_name, city_hint, category_hint, source, collection_name, google_maps_url, notes, created_at")
+    .eq("trip_id", tripId)
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  if (!error && data) {
+    return {
+      ok: true,
+      storage: "table",
+      rows: data as EmbeddedSavedPlaceRow[],
+    };
+  }
+
+  if (!isTripSavedPlacesTableMissingError(error)) {
+    return { ok: false, error: error?.message ?? "Failed to load saved places." };
+  }
+
+  const { data: trip, error: tripError } = await supabase
+    .from("trips")
+    .select("raw_input")
+    .eq("id", tripId)
+    .single();
+
+  if (tripError) return { ok: false, error: tripError.message };
+
+  const parsed = parseTripRawInputSavedPlaces(trip?.raw_input ?? null);
+  return {
+    ok: true,
+    storage: "raw_input",
+    rows: parsed.rows,
+  };
+}
+
+async function persistTripSavedPlacesInRawInput(
+  supabase: ReturnType<typeof getSupabase>,
+  tripId: string,
+  rows: EmbeddedSavedPlaceRow[]
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data: trip, error: tripError } = await supabase
+    .from("trips")
+    .select("raw_input")
+    .eq("id", tripId)
+    .single();
+
+  if (tripError) return { ok: false, error: tripError.message };
+
+  const parsed = parseTripRawInputSavedPlaces(trip?.raw_input ?? null);
+  const payload = serializeTripRawInputSavedPlaces(parsed.baseRawInput, rows);
+
+  const { error: updateError } = await supabase
+    .from("trips")
+    .update({ raw_input: payload })
+    .eq("id", tripId);
+
+  if (updateError) return { ok: false, error: updateError.message };
+  return { ok: true };
+}
+
+function isTripSavedPlacesTableMissingError(error: { message?: string } | null | undefined): boolean {
+  const message = (error?.message ?? "").toLowerCase();
+  return (
+    message.includes("trip_saved_places") &&
+    (message.includes("schema cache") || message.includes("does not exist"))
+  );
 }
