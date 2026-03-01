@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -9,6 +9,10 @@ import {
   CheckIcon,
   PlusCircleIcon,
   MapPinIcon,
+  PlaneIcon,
+  CalendarClockIcon,
+  LinkIcon,
+  StickyNoteIcon,
 } from "lucide-react";
 import {
   Dialog,
@@ -19,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { suggestNewStops, addStop } from "@/app/actions";
 import type { Recommendation } from "@/lib/recommendations";
 import { cn } from "@/lib/utils";
@@ -28,6 +33,8 @@ type AddStopDialogProps = {
   episode: string;
   city: string;
 };
+
+type AddMode = "stop" | "transport";
 
 const categoryColors: Record<string, string> = {
   sight: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
@@ -39,19 +46,35 @@ const categoryColors: Record<string, string> = {
 export function AddStopDialog({ dayId, episode, city }: AddStopDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<AddMode>("stop");
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [customName, setCustomName] = useState("");
+  const [googleMapsLink, setGoogleMapsLink] = useState("");
+  const [transportName, setTransportName] = useState("");
+  const [timeInfo, setTimeInfo] = useState("");
+  const [bookingUrl, setBookingUrl] = useState("");
+  const [transportNotes, setTransportNotes] = useState("");
   const [, startTransition] = useTransition();
 
-  async function handleOpen(isOpen: boolean) {
+  function handleOpen(isOpen: boolean) {
     setOpen(isOpen);
-    if (isOpen && recommendations.length === 0 && !loading) {
-      fetchSuggestions();
+    if (!isOpen) {
+      setMode("stop");
+      setTransportName("");
+      setTimeInfo("");
+      setBookingUrl("");
+      setTransportNotes("");
     }
   }
+
+  useEffect(() => {
+    if (open && mode === "stop" && recommendations.length === 0 && !loading) {
+      fetchSuggestions();
+    }
+  }, [open, mode]);
 
   async function fetchSuggestions() {
     setLoading(true);
@@ -65,16 +88,19 @@ export function AddStopDialog({ dayId, episode, city }: AddStopDialogProps) {
     }
   }
 
-  async function handleAdd(name: string, category: string) {
+  async function handleAdd(name: string, category: string, mapsUrl?: string | null) {
     setAdding(name);
     startTransition(async () => {
-      const result = await addStop(dayId, episode, name, category);
+      const result = await addStop(dayId, episode, name, category, {
+        googleMapsUrl: mapsUrl?.trim() || undefined,
+      });
       if (result.ok) {
         toast.success(`Added ${name}`);
         setOpen(false);
         setRecommendations([]);
         setAdding(null);
         setCustomName("");
+        setGoogleMapsLink("");
         router.refresh();
       } else {
         toast.error(result.error);
@@ -86,28 +112,177 @@ export function AddStopDialog({ dayId, episode, city }: AddStopDialogProps) {
   async function handleAddCustom() {
     const name = customName.trim();
     if (!name) return;
-    await handleAdd(name, "sight");
+    await handleAdd(name, "sight", googleMapsLink || undefined);
+  }
+
+  async function handleAddTransport() {
+    const name = transportName.trim();
+    if (!name) return;
+    setAdding(name);
+    startTransition(async () => {
+      const result = await addStop(dayId, episode, name, "transport", {
+        timeInfo: timeInfo.trim() || null,
+        bookingUrl: bookingUrl.trim() || null,
+        userNotes: transportNotes.trim() || null,
+      });
+      if (result.ok) {
+        toast.success(`Added ${name}`);
+        setOpen(false);
+        setAdding(null);
+        setTransportName("");
+        setTimeInfo("");
+        setBookingUrl("");
+        setTransportNotes("");
+        router.refresh();
+      } else {
+        toast.error(result.error);
+        setAdding(null);
+      }
+    });
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogTrigger asChild>
-        <button
-          type="button"
-          className="flex items-center gap-1.5 text-xs text-primary hover:underline font-medium py-1"
-        >
-          <PlusCircleIcon className="size-3.5" />
-          Add a stop
-        </button>
-      </DialogTrigger>
+      <div className="flex items-center gap-1">
+        <DialogTrigger asChild>
+          <button
+            type="button"
+            onClick={() => setMode("stop")}
+            className="flex items-center gap-1.5 text-xs text-primary hover:underline font-medium py-1"
+          >
+            <PlusCircleIcon className="size-3.5" />
+            Add a stop
+          </button>
+        </DialogTrigger>
+        <span className="text-muted-foreground/60">·</span>
+        <DialogTrigger asChild>
+          <button
+            type="button"
+            onClick={() => setMode("transport")}
+            className="flex items-center gap-1.5 text-xs text-primary hover:underline font-medium py-1"
+          >
+            <PlaneIcon className="size-3.5" />
+            Add transport
+          </button>
+        </DialogTrigger>
+      </div>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <PlusCircleIcon className="size-4 text-primary" />
-            Add a {episode.toLowerCase()} stop in {city}
+            {mode === "transport" ? (
+              <>
+                <PlaneIcon className="size-4 text-primary" />
+                Add transport — {episode.toLowerCase()} in {city}
+              </>
+            ) : (
+              <>
+                <PlusCircleIcon className="size-4 text-primary" />
+                Add a {episode.toLowerCase()} stop in {city}
+              </>
+            )}
           </DialogTitle>
         </DialogHeader>
 
+        <div className="flex rounded-lg border p-0.5 bg-muted/30">
+          <button
+            type="button"
+            onClick={() => { setMode("stop"); setError(null); if (recommendations.length === 0 && !loading) fetchSuggestions(); }}
+            className={cn(
+              "flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+              mode === "stop" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Add a stop
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode("transport"); setError(null); }}
+            className={cn(
+              "flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+              mode === "transport" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Add transport
+          </button>
+        </div>
+
+        {mode === "transport" ? (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="transport-name">Name (e.g. Flight to Da Nang, Train to Hue)</Label>
+              <Input
+                id="transport-name"
+                placeholder="Flight SGN → DAD"
+                value={transportName}
+                onChange={(e) => setTransportName(e.target.value)}
+                disabled={adding !== null}
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="transport-time" className="flex items-center gap-1.5 text-muted-foreground">
+                <CalendarClockIcon className="size-3.5" />
+                Time (optional)
+              </Label>
+              <Input
+                id="transport-time"
+                placeholder="Dep 14:00, Arr 16:30"
+                value={timeInfo}
+                onChange={(e) => setTimeInfo(e.target.value)}
+                disabled={adding !== null}
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="transport-link" className="flex items-center gap-1.5 text-muted-foreground">
+                <LinkIcon className="size-3.5" />
+                Booking or ticket link (optional)
+              </Label>
+              <Input
+                id="transport-link"
+                type="url"
+                placeholder="https://..."
+                value={bookingUrl}
+                onChange={(e) => setBookingUrl(e.target.value)}
+                disabled={adding !== null}
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="transport-notes" className="flex items-center gap-1.5 text-muted-foreground">
+                <StickyNoteIcon className="size-3.5" />
+                Notes (optional)
+              </Label>
+              <textarea
+                id="transport-notes"
+                placeholder="Confirmation code, terminal, seat number…"
+                value={transportNotes}
+                onChange={(e) => setTransportNotes(e.target.value)}
+                disabled={adding !== null}
+                rows={2}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <Button
+              onClick={handleAddTransport}
+              disabled={!transportName.trim() || adding !== null}
+              className="w-full"
+            >
+              {adding ? (
+                <>
+                  <Loader2Icon className="size-4 animate-spin" />
+                  Adding…
+                </>
+              ) : (
+                <>
+                  <PlaneIcon className="size-4" />
+                  Add transport
+                </>
+              )}
+            </Button>
+          </div>
+        ) : (
+          <>
         <div className="flex gap-2">
           <Input
             placeholder="Or type a place name…"
@@ -129,6 +304,14 @@ export function AddStopDialog({ dayId, episode, city }: AddStopDialogProps) {
             )}
           </Button>
         </div>
+
+        <Input
+          placeholder="Paste Google Maps link (optional — for accurate map pin)"
+          value={googleMapsLink}
+          onChange={(e) => setGoogleMapsLink(e.target.value)}
+          disabled={adding !== null}
+          className="text-sm"
+        />
 
         <div className="relative">
           <div className="absolute inset-x-0 top-1/2 border-t" />
@@ -217,6 +400,8 @@ export function AddStopDialog({ dayId, episode, city }: AddStopDialogProps) {
             <SparklesIcon className="size-3.5" />
             Get new suggestions
           </Button>
+        )}
+          </>
         )}
       </DialogContent>
     </Dialog>

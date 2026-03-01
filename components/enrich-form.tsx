@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect, useId } from "react";
+import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2Icon, XIcon, SparklesIcon, CheckIcon } from "lucide-react";
-import { enrichAndSaveTrip } from "@/app/actions";
+import { parseItinerary } from "@/lib/parse-itinerary";
+import { enrichItinerary } from "@/lib/enrich-places";
+import { saveTrip } from "@/lib/save-trip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AILoader } from "@/components/ui/ai-loader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,11 +32,9 @@ Afternoon: Hasedera temple, walk to Komachi-dori street
 Evening: Return to Tokyo, dinner in Ginza`;
 
 const PROGRESS_STEPS = [
-  { label: "Parsing itinerary…", duration: 4000 },
-  { label: "Geocoding places…", duration: 6000 },
-  { label: "Fetching photos…", duration: 8000 },
-  { label: "Getting weather data…", duration: 5000 },
-  { label: "Saving your trip…", duration: 3000 },
+  { label: "Parsing itinerary…" },
+  { label: "Building your trip…", sublabel: "Geocoding, photos & weather" },
+  { label: "Saving your trip…" },
 ];
 
 export function EnrichForm() {
@@ -46,36 +47,31 @@ export function EnrichForm() {
   const errorId = useId();
   const formId = useId();
 
-  useEffect(() => {
-    if (!loading) {
-      setProgressStep(0);
-      return;
-    }
-    let step = 0;
-    let timeout: ReturnType<typeof setTimeout>;
-    const advance = () => {
-      if (step < PROGRESS_STEPS.length - 1) {
-        step++;
-        setProgressStep(step);
-        timeout = setTimeout(advance, PROGRESS_STEPS[step].duration);
-      }
-    };
-    timeout = setTimeout(advance, PROGRESS_STEPS[0].duration);
-    return () => clearTimeout(timeout);
-  }, [loading]);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    setProgressStep(0);
     try {
-      const result = await enrichAndSaveTrip(rawText, tripName);
-      if (result.ok) {
-        toast.success("Trip saved — let's explore!");
-        router.push(`/trips/${result.tripId}`);
+      const parseResult = await parseItinerary(rawText.trim());
+      if (parseResult.error || !parseResult.data) {
+        setError(`Parsing: ${parseResult.error ?? "Parsing failed."}`);
         return;
       }
-      setError(result.error ?? "Something went wrong.");
+      setProgressStep(1);
+      const enrichResult = await enrichItinerary(parseResult.data);
+      if (enrichResult.error || !enrichResult.data) {
+        setError(`Enrichment: ${enrichResult.error ?? "Enrichment failed."}`);
+        return;
+      }
+      setProgressStep(2);
+      const saveResult = await saveTrip(tripName.trim(), rawText.trim(), enrichResult.data);
+      if (saveResult.error) {
+        setError(`Saving: ${saveResult.error}`);
+        return;
+      }
+      toast.success("Trip saved — let's explore!");
+      router.push(`/trips/${saveResult.tripId!}`);
     } finally {
       setLoading(false);
     }
@@ -159,27 +155,35 @@ export function EnrichForm() {
           </div>
 
           {loading && (
-            <div className="rounded-lg bg-muted/60 p-4 space-y-2.5">
-              {PROGRESS_STEPS.map((step, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "flex items-center gap-2.5 text-sm transition-all duration-300",
-                    i < progressStep && "text-muted-foreground",
-                    i === progressStep && "text-foreground font-medium",
-                    i > progressStep && "text-muted-foreground/40"
-                  )}
-                >
-                  {i < progressStep ? (
-                    <CheckIcon className="size-4 text-green-600 dark:text-green-400 shrink-0" />
-                  ) : i === progressStep ? (
-                    <Loader2Icon className="size-4 animate-spin text-primary shrink-0" />
-                  ) : (
-                    <div className="size-4 shrink-0" />
-                  )}
-                  {step.label}
-                </div>
-              ))}
+            <div className="rounded-lg bg-muted/60 p-6 space-y-4">
+              <AILoader text={PROGRESS_STEPS[progressStep].label.replace(/…$/, "")} />
+              {PROGRESS_STEPS[progressStep].sublabel && (
+                <p className="text-center text-xs text-muted-foreground">
+                  {PROGRESS_STEPS[progressStep].sublabel}
+                </p>
+              )}
+              <div className="flex flex-col gap-1.5 pt-2">
+                {PROGRESS_STEPS.map((step, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "flex items-center gap-2.5 text-sm transition-all duration-300",
+                      i < progressStep && "text-muted-foreground",
+                      i === progressStep && "text-foreground font-medium",
+                      i > progressStep && "text-muted-foreground/40"
+                    )}
+                  >
+                    {i < progressStep ? (
+                      <CheckIcon className="size-4 text-green-600 dark:text-green-400 shrink-0" />
+                    ) : i === progressStep ? (
+                      <div className="size-4 shrink-0 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                    ) : (
+                      <div className="size-4 shrink-0" />
+                    )}
+                    {step.label}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

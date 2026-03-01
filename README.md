@@ -10,7 +10,8 @@ An interactive, Airbnb-grade travel planner that turns raw itinerary text into a
 - **Calendar view** -- Month-grid overview with city color coding, weather icons, and stop counts
 - **Timeline view** -- Scroll-animated vertical timeline with city transitions and place previews
 - **Drag-and-drop** -- Reorder stops within a day, persisted to the database
-- **Trip intelligence** -- Extend trips by adding days, AI recommendations for alternatives
+- **Trip intelligence** -- Extend trips by adding days, AI recommendations for alternatives, reshuffle a single day (trip-aware: avoids places already on other days)
+- **Accurate map pins** -- Add a stop with an optional Google Maps link (or fix an existing stop with "Fix pin") to use exact coordinates instead of geocoding
 - **Responsive** -- Mobile-first design with warm Airbnb-inspired palette
 
 ## Stack
@@ -41,9 +42,11 @@ Copy `.env.local.example` to `.env.local` and set:
 ## Database setup
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. In the SQL Editor, run both migration files in order:
+2. In the SQL Editor, run the migration files in order:
    - `supabase/migrations/20260222000000_create_trips_days_places.sql` (base schema)
    - `supabase/migrations/20260225000000_add_weather_descriptions.sql` (weather, descriptions, categories)
+   - `supabase/migrations/20260226000000_add_user_notes.sql` (user notes on places)
+   - `supabase/migrations/20260301000000_add_place_travel_fields.sql` (time_info, booking_url for transport)
 
 Or use the Supabase CLI:
 
@@ -66,7 +69,7 @@ Open [http://localhost:3000](http://localhost:3000). Paste an itinerary, name yo
 - **`/`** -- Home: hero section + itinerary input form
 - **`/trips`** -- Grid of saved trips with cover images
 - **`/trips/[id]`** -- Trip detail with three views:
-  - **Daily** -- Day selector, place cards with drag-and-drop, interactive map
+  - **Daily** -- Day selector, place cards with drag-and-drop, interactive map, reshuffle day (new plan for one day, trip-aware)
   - **Calendar** -- Month grid with city colors, weather, stop counts
   - **Timeline** -- Vertical scroll timeline with city transitions
 
@@ -78,7 +81,7 @@ Open [http://localhost:3000](http://localhost:3000). Paste an itinerary, name yo
 npm test
 ```
 
-30 tests across 3 test files covering schema validation, weather utilities, and action input validation.
+48 tests across 6 test files covering schema validation, weather utilities, parse-google-maps-url, and action input validation.
 
 **E2E tests (Playwright)**
 
@@ -144,6 +147,8 @@ components/
     weather-widget.tsx      Compact weather display
     view-switcher.tsx       Daily/Calendar/Timeline tabs
     extend-trip-dialog.tsx  Add-a-day dialog
+    add-stop-dialog.tsx     Add stop (name + optional Google Maps link)
+    edit-location-dialog.tsx Fix map pin from Google Maps link
     skeletons.tsx           Loading skeleton components
 
 lib/
@@ -152,6 +157,7 @@ lib/
   supabase.ts              Supabase client
   parse-itinerary.ts       OpenAI itinerary parser
   enrich-places.ts         Geocoding + images + descriptions + weather
+  parse-google-maps-url.ts Parse Google Maps URLs for lat/lng (accurate pins)
   save-trip.ts             Database persistence
   get-trips.ts             Database queries
   weather.ts               Open-Meteo API client

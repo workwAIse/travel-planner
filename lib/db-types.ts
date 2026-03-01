@@ -41,6 +41,8 @@ export type Place = {
   duration_minutes: number | null;
   address_short: string | null;
   user_notes: string | null;
+  time_info: string | null;
+  booking_url: string | null;
 };
 
 export type TripWithDaysAndPlaces = Trip & {

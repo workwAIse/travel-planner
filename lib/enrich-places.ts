@@ -4,6 +4,7 @@ import { formatFetchError } from "./errors";
 import type { ParsedItinerary, EnrichedItinerary, EnrichedPlace, EpisodeKey } from "./schema";
 import { fetchWeather } from "./weather";
 import { generatePlaceDetails } from "./place-details";
+import { expandThinItinerary } from "./expand-itinerary";
 
 const EPISODE_ORDER: EpisodeKey[] = ["Morning", "Afternoon", "Evening"];
 
@@ -19,9 +20,11 @@ export async function enrichItinerary(parsed: ParsedItinerary): Promise<{
   error?: string;
 }> {
   try {
+    // Expand thin days (only city name, few or no stops) into full day plans with 2–4 stops per episode
+    const expanded = await expandThinItinerary(parsed);
     const days: EnrichedItinerary["days"] = [];
 
-    for (const day of parsed.days) {
+    for (const day of expanded.days) {
       const places: EnrichedPlace[] = [];
       let sortOrder = 0;
       for (const episode of EPISODE_ORDER) {

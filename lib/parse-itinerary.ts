@@ -14,6 +14,7 @@ const SYSTEM_PROMPT = `You are an itinerary parser. Given raw travel itinerary t
 Output valid JSON only (no markdown, no code fence). Dates must be YYYY-MM-DD.
 For each day include: date, place (city/region), optional theme, summary (what you'll see that day), and episodes.
 Episodes are Morning, Afternoon, Evening. Each episode can have an array of places.
+When the user gives only city names or day ranges (e.g. "1-3: Ho Chi Minh City", "4-5: Hoi An"), still fill every day with a fast-paced plan: suggest 2–4 specific places per episode (famous sights, food, neighborhoods) so each day has concrete stops.
 For each place provide:
 - name: the place or activity name
 - addressOrDescription: full address or location text from the input

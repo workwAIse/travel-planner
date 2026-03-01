@@ -2,12 +2,16 @@
 
 import { parseItinerary } from "@/lib/parse-itinerary";
 import { enrichItinerary, smartGeocode, getPlaceImageWikipedia } from "@/lib/enrich-places";
+import { parseGoogleMapsUrl, parseGoogleMapsUrlAsync } from "@/lib/parse-google-maps-url";
 import { saveTrip } from "@/lib/save-trip";
 import { getSupabase } from "@/lib/supabase";
 import { getRecommendations, type Recommendation } from "@/lib/recommendations";
 import { generatePlaceDetails } from "@/lib/place-details";
 import { regenerateDaySummary } from "@/lib/regenerate-summary";
+import { generateReshuffledDay } from "@/lib/reshuffle-day";
 import { revalidatePath } from "next/cache";
+
+const NOMINATIM_DELAY_MS = 1100;
 
 export type EnrichAndSaveResult =
   | { ok: true; tripId: string }
@@ -60,6 +64,90 @@ export async function updatePlaceNotes(
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to save note." };
+  }
+}
+
+export async function updatePlaceTravelInfo(
+  placeId: string,
+  timeInfo: string | null,
+  bookingUrl: string | null
+): Promise<ActionResult> {
+  try {
+    const supabase = getSupabase();
+    const payload: { time_info: string | null; booking_url: string | null } = {
+      time_info: timeInfo?.trim() || null,
+      booking_url: bookingUrl?.trim() || null,
+    };
+    const { error } = await supabase
+      .from("places")
+      .update(payload)
+      .eq("id", placeId);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/trips");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to save travel details." };
+  }
+}
+
+export type UpdateLocationResult =
+  | { ok: true; approximate?: boolean }
+  | { ok: false; error: string };
+
+export async function updatePlaceLocation(
+  placeId: string,
+  dayId: string,
+  googleMapsUrl: string
+): Promise<UpdateLocationResult> {
+  try {
+    const trimmed = googleMapsUrl.trim();
+    if (!trimmed) return { ok: false, error: "Paste a Google Maps link." };
+    let parsed = await parseGoogleMapsUrlAsync(trimmed);
+    let approximate = false;
+    if (!parsed) {
+      const supabase = getSupabase();
+      const { data: place } = await supabase
+        .from("places")
+        .select("name")
+        .eq("id", placeId)
+        .single();
+      const { data: day } = await supabase
+        .from("days")
+        .select("place")
+        .eq("id", dayId)
+        .single();
+      const city = day?.place ?? "";
+      const name = place?.name ?? "";
+      if (name) {
+        const [lat, lng] = await smartGeocode(name, city);
+        if (lat != null && lng != null) {
+          parsed = { lat, lng };
+          approximate = true;
+        }
+      }
+    }
+    if (!parsed) {
+      return {
+        ok: false,
+        error:
+          "Could not get coordinates from that link. We also tried the place name; no location found.",
+      };
+    }
+    const supabase = getSupabase();
+    const { error } = await supabase
+      .from("places")
+      .update({
+        lat: parsed.lat,
+        lng: parsed.lng,
+        google_maps_url: trimmed,
+      })
+      .eq("id", placeId);
+    if (error) return { ok: false, error: error.message };
+    await updateDaySummary(supabase, dayId);
+    revalidatePath("/trips");
+    return approximate ? { ok: true, approximate: true } : { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to update location." };
   }
 }
 
@@ -524,7 +612,13 @@ export async function addStop(
   dayId: string,
   episode: string,
   name: string,
-  category: string
+  category: string,
+  options?: {
+    googleMapsUrl?: string | null;
+    timeInfo?: string | null;
+    bookingUrl?: string | null;
+    userNotes?: string | null;
+  }
 ): Promise<ReplaceResult> {
   try {
     const supabase = getSupabase();
@@ -544,22 +638,45 @@ export async function addStop(
       .limit(1);
     const nextSortOrder = ((existingPlaces?.[0]?.sort_order ?? -1) as number) + 1;
 
-    const [lat, lng] = await smartGeocode(name, city);
-    const imageUrl = await getPlaceImageWikipedia(name, city, lat ?? undefined, lng ?? undefined);
+    const isTransport = category.toLowerCase() === "transport";
 
+    let lat: number | null = null;
+    let lng: number | null = null;
+    let googleMapsUrlToStore: string | null = null;
+    let imageUrl: string | null = null;
     let descriptionLong = "A notable stop on your journey.";
     let durationMinutes = 60;
     let addressShort = "";
-    try {
-      const details = await generatePlaceDetails([{ name, city }]);
-      if (details[0]) {
-        descriptionLong = details[0].descriptionLong;
-        category = details[0].category || category;
-        durationMinutes = details[0].durationMinutes;
-        addressShort = details[0].addressShort;
+
+    if (isTransport) {
+      descriptionLong = "Travel segment.";
+    } else {
+      const parsed = options?.googleMapsUrl?.trim()
+        ? await parseGoogleMapsUrlAsync(options.googleMapsUrl.trim())
+        : null;
+      if (parsed) {
+        lat = parsed.lat;
+        lng = parsed.lng;
+        googleMapsUrlToStore = options!.googleMapsUrl!.trim();
+      } else {
+        [lat, lng] = await smartGeocode(name, city);
+        googleMapsUrlToStore =
+          lat != null && lng != null
+            ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+            : null;
       }
-    } catch {
-      // Non-fatal
+      imageUrl = await getPlaceImageWikipedia(name, city, lat ?? undefined, lng ?? undefined);
+      try {
+        const details = await generatePlaceDetails([{ name, city }]);
+        if (details[0]) {
+          descriptionLong = details[0].descriptionLong;
+          category = details[0].category || category;
+          durationMinutes = details[0].durationMinutes;
+          addressShort = details[0].addressShort;
+        }
+      } catch {
+        // Non-fatal
+      }
     }
 
     const { error: insertError } = await supabase.from("places").insert({
@@ -575,9 +692,10 @@ export async function addStop(
       address_short: addressShort,
       sort_order: nextSortOrder,
       details: null,
-      google_maps_url: lat && lng
-        ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
-        : null,
+      google_maps_url: googleMapsUrlToStore,
+      user_notes: options?.userNotes?.trim() || null,
+      time_info: options?.timeInfo?.trim() || null,
+      booking_url: options?.bookingUrl?.trim() || null,
     });
 
     if (insertError) return { ok: false, error: insertError.message };
@@ -588,5 +706,99 @@ export async function addStop(
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to add stop." };
+  }
+}
+
+export async function reshuffleDay(dayId: string, userPrompt?: string): Promise<ReplaceResult> {
+  try {
+    const supabase = getSupabase();
+
+    const { data: day, error: dayError } = await supabase
+      .from("days")
+      .select("id, date, place, theme, summary, trip_id")
+      .eq("id", dayId)
+      .single();
+    if (dayError || !day) return { ok: false, error: "Day not found." };
+
+    let otherDaysPlaceNames: string[] = [];
+    const { data: otherDays } = await supabase
+      .from("days")
+      .select("id")
+      .eq("trip_id", day.trip_id)
+      .neq("id", dayId);
+    const otherDayIds = (otherDays ?? []).map((d) => d.id);
+    if (otherDayIds.length > 0) {
+      const { data: otherPlaces } = await supabase
+        .from("places")
+        .select("name")
+        .in("day_id", otherDayIds);
+      otherDaysPlaceNames = [...new Set((otherPlaces ?? []).map((p) => p.name).filter(Boolean))];
+    }
+
+    const episodes = await generateReshuffledDay(
+      {
+        date: day.date,
+        place: day.place,
+        theme: day.theme,
+        summary: day.summary,
+      },
+      otherDaysPlaceNames,
+      userPrompt?.trim() || undefined
+    );
+    if (!episodes) return { ok: false, error: "Could not generate a new plan." };
+
+    const { error: deleteError } = await supabase.from("places").delete().eq("day_id", dayId);
+    if (deleteError) return { ok: false, error: deleteError.message };
+
+    const city = day.place;
+    let sortOrder = 0;
+    for (const episode of ["Morning", "Afternoon", "Evening"] as const) {
+      const list = episodes[episode] ?? [];
+      for (const p of list) {
+        const [lat, lng] = await smartGeocode(p.name, city, p.addressOrDescription || null);
+        await new Promise((r) => setTimeout(r, NOMINATIM_DELAY_MS));
+        const imageUrl = await getPlaceImageWikipedia(p.name, city, lat ?? undefined, lng ?? undefined);
+        let descriptionLong = "A notable stop on your journey.";
+        let durationMinutes = 60;
+        let addressShort = "";
+        let category: string = "sight";
+        try {
+          const details = await generatePlaceDetails([{ name: p.name, city }]);
+          if (details[0]) {
+            descriptionLong = details[0].descriptionLong;
+            category = details[0].category;
+            durationMinutes = details[0].durationMinutes;
+            addressShort = details[0].addressShort;
+          }
+        } catch {
+          // Non-fatal
+        }
+
+        const { error: insertError } = await supabase.from("places").insert({
+          day_id: dayId,
+          name: p.name,
+          episode,
+          lat,
+          lng,
+          image_url: imageUrl,
+          description_long: descriptionLong,
+          category,
+          duration_minutes: durationMinutes,
+          address_short: addressShort,
+          sort_order: sortOrder++,
+          details: null,
+          google_maps_url: lat && lng
+            ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+            : null,
+        });
+        if (insertError) return { ok: false, error: insertError.message };
+      }
+    }
+
+    await updateDaySummary(supabase, dayId);
+    revalidatePath("/trips");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to reshuffle day." };
   }
 }

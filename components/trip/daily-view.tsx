@@ -44,6 +44,7 @@ function EpisodeHeader({ episode }: { episode: string }) {
 }
 import { SortablePlaceCard } from "./sortable-place-card";
 import { AddStopDialog } from "./add-stop-dialog";
+import { ReshuffleDayDialog } from "./reshuffle-day-dialog";
 import { TripStats } from "./trip-stats";
 import { WeatherWidget } from "./weather-widget";
 import { DayMap } from "./day-map";
@@ -230,7 +231,7 @@ function DayContent({
             lowC={day.weather_low_c}
           />
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 flex-wrap text-sm text-muted-foreground">
           <span className="font-medium">{day.place}</span>
           {day.theme && (
             <>
@@ -238,6 +239,10 @@ function DayContent({
               <span className="italic">{day.theme}</span>
             </>
           )}
+          <ReshuffleDayDialog
+            dayId={day.id}
+            dayLabel={`Day ${dayNumber} · ${dateStr}`}
+          />
         </div>
         {day.summary && (
           <p className="text-sm leading-relaxed max-w-prose">{day.summary}</p>

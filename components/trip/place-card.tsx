@@ -12,10 +12,16 @@ import {
   StickyNoteIcon,
   Trash2Icon,
   Loader2Icon,
+  PlaneIcon,
+  CarIcon,
+  TrainIcon,
+  LinkIcon,
+  CalendarClockIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SwapPlaceDialog } from "./swap-place-dialog";
-import { updatePlaceNotes, deletePlace } from "@/app/actions";
+import { EditLocationDialog } from "./edit-location-dialog";
+import { updatePlaceNotes, updatePlaceTravelInfo, deletePlace } from "@/app/actions";
 
 export type PlaceCardData = {
   id: string;
@@ -32,6 +38,8 @@ export type PlaceCardData = {
   duration_minutes: number | null;
   address_short: string | null;
   user_notes: string | null;
+  time_info: string | null;
+  booking_url: string | null;
 };
 
 type PlaceCardProps = {
@@ -58,6 +66,13 @@ function descriptionText(place: PlaceCardData): string | null {
   return null;
 }
 
+function getTransportIcon(name: string): typeof PlaneIcon {
+  const lower = name.toLowerCase();
+  if (lower.includes("train") || lower.includes("station") || lower.includes("rail")) return TrainIcon;
+  if (lower.includes("car") || lower.includes("drive") || lower.includes("bus") || lower.includes("taxi")) return CarIcon;
+  return PlaneIcon;
+}
+
 export function PlaceCard({
   place,
   index,
@@ -70,13 +85,19 @@ export function PlaceCard({
   const [expanded, setExpanded] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [notes, setNotes] = useState(place.user_notes ?? "");
+  const [showTravelEdit, setShowTravelEdit] = useState(false);
+  const [timeInfo, setTimeInfo] = useState(place.time_info ?? "");
+  const [bookingUrl, setBookingUrl] = useState(place.booking_url ?? "");
   const [savingNotes, startSaveTransition] = useTransition();
+  const [savingTravel, startSaveTravelTransition] = useTransition();
   const [deleting, startDeleteTransition] = useTransition();
   const desc = descriptionText(place);
   const isLong = desc != null && desc.length > 120;
   const catColor =
     categoryColors[(place.category ?? "").toLowerCase()] ??
     categoryColors.sight;
+  const isTransport = (place.category ?? "").toLowerCase() === "transport";
+  const transportIcon = getTransportIcon(place.name);
 
   function handleSaveNotes() {
     startSaveTransition(async () => {
@@ -103,6 +124,23 @@ export function PlaceCard({
     });
   }
 
+  function handleSaveTravel() {
+    startSaveTravelTransition(async () => {
+      const result = await updatePlaceTravelInfo(
+        place.id,
+        timeInfo.trim() || null,
+        bookingUrl.trim() || null
+      );
+      if (result.ok) {
+        toast.success("Travel details saved");
+        setShowTravelEdit(false);
+        router.refresh();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
   return (
     <div
       role="button"
@@ -114,7 +152,8 @@ export function PlaceCard({
       className={cn(
         "group relative flex gap-3 rounded-xl border bg-card p-3 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 cursor-pointer",
         dragHandleProps && "pl-8",
-        isActive && "ring-2 ring-primary"
+        isActive && "ring-2 ring-primary",
+        isTransport && "border-l-4 border-l-primary bg-primary/5 dark:bg-primary/10"
       )}
     >
       {dragHandleProps && (
@@ -146,9 +185,18 @@ export function PlaceCard({
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-sm font-semibold leading-tight truncate">
-            {place.name}
-          </h3>
+          <div className="flex items-center gap-2 min-w-0">
+            {isTransport && (
+              <span className="shrink-0 flex items-center justify-center rounded-md bg-primary/15 dark:bg-primary/25 p-1.5 text-primary" aria-hidden>
+                {transportIcon === PlaneIcon && <PlaneIcon className="size-4" />}
+                {transportIcon === CarIcon && <CarIcon className="size-4" />}
+                {transportIcon === TrainIcon && <TrainIcon className="size-4" />}
+              </span>
+            )}
+            <h3 className="text-sm font-semibold leading-tight truncate">
+              {place.name}
+            </h3>
+          </div>
           {place.category && (
             <span
               className={cn(
@@ -174,6 +222,88 @@ export function PlaceCard({
               </button>
             )}
           </div>
+        )}
+
+        {isTransport && (
+          <>
+            {(place.time_info || place.booking_url || showTravelEdit) && (
+              <div className="rounded-md bg-muted/80 dark:bg-muted/50 border border-border px-2.5 py-2 space-y-2" onClick={(e) => e.stopPropagation()}>
+                {!showTravelEdit ? (
+                  <>
+                    {place.time_info && (
+                      <div className="flex items-center gap-1.5 text-xs text-foreground">
+                        <CalendarClockIcon className="size-3.5 shrink-0 text-primary" />
+                        <span>{place.time_info}</span>
+                      </div>
+                    )}
+                    {place.booking_url && (
+                      <a
+                        href={place.booking_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <LinkIcon className="size-3.5 shrink-0" />
+                        View booking
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowTravelEdit(true)}
+                      className="text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                    >
+                      Edit time & link
+                    </button>
+                  </>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Time (e.g. Dep 14:00, Arr 16:30)"
+                      value={timeInfo}
+                      onChange={(e) => setTimeInfo(e.target.value)}
+                      className="w-full rounded-md border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    <input
+                      type="url"
+                      placeholder="Booking or ticket link"
+                      value={bookingUrl}
+                      onChange={(e) => setBookingUrl(e.target.value)}
+                      className="w-full rounded-md border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSaveTravel}
+                        disabled={savingTravel}
+                        className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {savingTravel ? <Loader2Icon className="size-3 animate-spin" /> : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowTravelEdit(false); setTimeInfo(place.time_info ?? ""); setBookingUrl(place.booking_url ?? ""); }}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {!place.time_info && !place.booking_url && !showTravelEdit && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setShowTravelEdit(true); }}
+                className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1"
+              >
+                <CalendarClockIcon className="size-3" />
+                Add time & booking link
+              </button>
+            )}
+          </>
         )}
 
         {place.user_notes && !showNotes && (
@@ -250,6 +380,21 @@ export function PlaceCard({
                     Swap
                   </button>
                 </SwapPlaceDialog>
+                <EditLocationDialog
+                  placeId={place.id}
+                  dayId={dayId}
+                  placeName={place.name}
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground font-medium"
+                    title="Set location from Google Maps link"
+                  >
+                    <MapPinIcon className="size-3" />
+                    Fix pin
+                  </button>
+                </EditLocationDialog>
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); handleDelete(); }}
