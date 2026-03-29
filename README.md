@@ -64,6 +64,15 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). Paste an itinerary, name your trip, and click **Create trip**.
 
+## Cursor Cloud Agent
+
+The cloud agent needs the project to be a **Git clone from GitHub** (so it has a remote).
+
+1. Run `git remote -v` and confirm `origin` points at `https://github.com/workwAIse/travel-planner.git` (or your fork).
+2. If you only opened a local folder in Cursor, the cloud runner may lack a remote. Use **File → Open from GitHub** and open `workwAIse/travel-planner` (or clone the repo), then run the cloud agent from that workspace.
+3. Push before a cloud run: `git push origin main`.
+4. If a cloud workspace has no remote, add it there: `git remote add origin https://github.com/workwAIse/travel-planner.git` then `git push -u origin main` (adjust URL for forks).
+
 ## Routes
 
 - **`/`** -- Home: hero section + itinerary input form
